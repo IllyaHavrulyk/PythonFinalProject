@@ -65,7 +65,7 @@ python -m pip install ttkbootstrap matplotlib numpy
 ## Запуск
 
 ```bash
-python main.py
+python to_delete.py
 ```
 
 Після запуску відкриється головне вікно менеджера витрат.
