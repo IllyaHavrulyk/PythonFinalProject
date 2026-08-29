@@ -1,13 +1,14 @@
 import matplotlib.backends.backend_tkagg as tkAgg
 import matplotlib.pyplot as plt
 import ttkbootstrap as tb
-from ttkbootstrap.constants import BOTH
+from ttkbootstrap.constants import *
 
 from constants import *
 
 
 class PieChart:
     def __init__(self, row, column, sizes, master, categories, colors, title):
+        # Pie chart frame
         self.sizes = sizes
         self.row = row
         self.column = column
@@ -20,6 +21,7 @@ class PieChart:
         self.figure = None
         self.axis = None
         self.pie_slices = None
+        # Matplotlib pie chart figure and axis
 
     def __prepare_plot(self):
         self.figure, self.axis = plt.subplots(figsize=(3, 2), dpi=100)
