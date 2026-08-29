@@ -1,4 +1,5 @@
 import ttkbootstrap as tb
+import tkinter as tk
 import numpy as np
 from constants import *
 from ui.charts.graph_chart import GraphChart
@@ -12,6 +13,7 @@ class Application:
         self.__app_window = None
         self.app_name = app_name
         self.geometry = geometry
+        self.initial_balance = 0
 
     # Initializing graphic elements
     def initialize(self):
@@ -19,17 +21,23 @@ class Application:
         app_window.title(self.app_name)
         app_window.geometry(self.geometry)
         app_window.minsize(1050, 700)
+        app_window.withdraw()
         self.__app_window = app_window
+
+    def start(self):
+        self.__app_window.after(100, self.__show_initial_balance_and_draw_app)
+        self.__app_window.mainloop()
+
+    def __show_initial_balance_and_draw_app(self):
+        self.initial_balance = self.__ask_initial_balance()
         self.__configure_grid()
-        Sidebar(self.__app_window).draw()
+        Sidebar(self.__app_window, balance=self.initial_balance).draw()
         self.__draw_top_chart()
         self.__draw_pie_chart()
         self.__draw_date_selectors()
         self.__draw_long_chart()
         DashboardAlerts(self.__app_window).draw()
-
-    def start(self):
-        self.__app_window.mainloop()
+        self.__app_window.deiconify()
 
     def __configure_grid(self):
         # Keep navigation in its own column. The chart columns are the only columns
@@ -40,6 +48,76 @@ class Application:
         self.__app_window.rowconfigure(1, weight=0)
         self.__app_window.rowconfigure(2, weight=0, minsize=180)
         self.__app_window.rowconfigure((3, 4), weight=0)
+
+    def __ask_initial_balance(self):
+        balance_var = tk.StringVar(value="0")
+        result = {"balance": 0}
+
+        dialog = tb.Toplevel(self.__app_window)
+        dialog.withdraw()
+        dialog.title("Початковий баланс")
+        dialog.resizable(False, False)
+
+        container = tb.Frame(dialog, padding=24)
+        container.grid(row=0, column=0, sticky="nsew")
+        container.columnconfigure(0, weight=1)
+
+        lbl_title = tb.Label(
+            container,
+            text="Введіть початковий баланс",
+            font=("Helvetica", 13, "bold"),
+        )
+        lbl_title.grid(row=0, column=0, pady=(0, 12), sticky="w")
+
+        entry_balance = tb.Entry(container, textvariable=balance_var, width=28)
+        entry_balance.grid(row=1, column=0, pady=(0, 8), sticky="ew")
+
+        lbl_error = tb.Label(container, text="", bootstyle="danger")
+        lbl_error.grid(row=2, column=0, pady=(0, 12), sticky="w")
+
+        def submit():
+            entered_balance = balance_var.get().strip().replace(",", ".")
+            try:
+                result["balance"] = float(entered_balance)
+            except ValueError:
+                lbl_error.configure(text="Введіть коректне число")
+                return
+            dialog.destroy()
+
+        btn_start = tb.Button(
+            container,
+            text="Почати",
+            bootstyle="success",
+            command=submit,
+        )
+        btn_start.grid(row=3, column=0, sticky="ew", ipady=4)
+
+        dialog.bind("<Return>", lambda _event: submit())
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        entry_balance.focus_set()
+        entry_balance.selection_range(0, tk.END)
+
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() - dialog.winfo_width()) // 2
+        y = (dialog.winfo_screenheight() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+        dialog.deiconify()
+        dialog.lift()
+
+        def disable_topmost():
+            if dialog.winfo_exists():
+                dialog.attributes("-topmost", False)
+
+        try:
+            dialog.attributes("-topmost", True)
+            dialog.after(250, disable_topmost)
+        except tk.TclError:
+            pass
+        dialog.grab_set()
+        entry_balance.focus_force()
+
+        self.__app_window.wait_window(dialog)
+        return result["balance"]
 
     def __draw_top_chart(self):
         x_data = ["Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер"]
