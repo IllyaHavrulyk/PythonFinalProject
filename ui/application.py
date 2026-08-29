@@ -1,12 +1,21 @@
-import ttkbootstrap as tb
-from ttkbootstrap.constants import *
-import matplotlib.pyplot as plt
 import matplotlib.backends.backend_tkagg as tkAgg
+import matplotlib.pyplot as plt
 import numpy as np
-from constants import *
-from utils import style_chart
-from ui.alert import Alert
+import ttkbootstrap as tb
 from ttkbootstrap import Messagebox
+from ttkbootstrap.constants import *
+
+import tkinter as tk
+
+from constants import *
+from ui.alert import Alert
+from ui.charts.graph_chart import GraphChart
+from ui.charts.pie_chart import PieChart
+from ui.dashboard_alerts import DashboardAlerts
+from ui.date_range_selector import DateRangeSelector
+from ui.sidebar import Sidebar
+from utils import style_chart
+
 
 class Application:
     def __init__(self, app_name, geometry):
@@ -21,15 +30,94 @@ class Application:
         app_window.geometry(self.geometry)
         app_window.minsize(1050, 700)
         self.__app_window = app_window
+
+    def __initialize_balance(self):
+        self.initial_balance = self.__ask_initial_balance()
         self.__configure_grid()
-        self.__draw_sidebar()
+        Sidebar(self.__app_window, balance=self.initial_balance).draw()
         self.__draw_top_chart()
         self.__draw_pie_chart()
         self.__draw_date_selectors()
         self.__draw_long_chart()
-        self.__draw_alerts(self.__app_window)
+        DashboardAlerts(self.__app_window).draw()
+        self.__app_window.deiconify()
+
+
+    def __ask_initial_balance(self):
+        balance_var = tb.StringVar(value="0")
+        result = {"balance": float(0)}
+
+        dialog = tb.Toplevel(self.__app_window)
+        dialog.withdraw()
+        dialog.title("Початковий баланс")
+        dialog.resizable(False, False)
+
+        container = tb.Frame(dialog, padding=24)
+        container.grid(column=0, row=0, sticky="nsew")
+        container.columnconfigure(0, weight=1)
+
+        lbl_title = tb.Label(
+            container,
+            text="Введіть початковий баланс",
+            font=("Helvetica", 13, "bold"),
+        )
+        lbl_title.grid(column=0, row=0, pady=(0,12), sticky="nsew")
+
+        entry_balance = tb.Entry(container, textvariable=balance_var, width=28)
+        entry_balance.grid(column=1, row=0, pady=(0,8), sticky="ew")
+
+        lbl_error = tb.Label(
+            container,
+            bootstyle="danger"
+        )
+        lbl_error.grid(column=0, row=1, pady=(0,12), sticky="w")
+
+        def submit():
+            entered_balance = balance_var.get().strip().replace(",", ".")
+            try:
+                result["balance"] = float(entered_balance)
+            except ValueError:
+                lbl_error.configure(text="Введіть коректне число")
+            dialog.destroy()
+
+        btn_start = tb.Button(
+            container,
+            text="Почати",
+            bootstyle="success",
+            command=submit
+        )
+        btn_start.grid(row=3, column=0, ipady=4, sticky="ew")
+
+        dialog.bind("<Return>", lambda _event: submit())
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+
+        entry_balance.focus_set()
+        entry_balance.selection_range(0, tk.END)
+
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() - dialog.winfo_width()) // 2
+        y = (dialog.winfo_screenheight() - dialog.winfo_height()) // 2
+        dialog.geometry("+{}+{}".format(x, y))
+        dialog.deiconify()
+        dialog.lift()
+
+        def disable_topmost():
+            if dialog.winfo_exists():
+                dialog.attributes("-topmost", False)
+
+        try:
+            dialog.attributes("-topmost", True)
+            dialog.after(250, disable_topmost)
+        except tk.TclError:
+            pass
+
+        dialog.grab_set()
+        entry_balance.focus_force()
+        self.__app_window.wait_window(dialog)
+        return result["balance"]
 
     def start(self):
+        self.__app_window.after(100, self.__initialize_balance)
         self.__app_window.mainloop()
 
     def __configure_grid(self):
@@ -42,118 +130,62 @@ class Application:
         self.__app_window.rowconfigure(2, weight=0, minsize=180)
         self.__app_window.rowconfigure((3, 4), weight=0)
 
-    def __draw_sidebar(self):
-        
-        
-        # Buttons and cushion text
-        sidebar = tb.Frame(self.__app_window, padding=(15, 18))
-        sidebar.grid(row=0, column=0, rowspan=5, sticky="nsew")
-        sidebar.columnconfigure(0, weight=1)
-
-        btn_expense = tb.Button(sidebar, text="Витрата", bootstyle="danger-outline", command=lambda: Messagebox.show_info("Витрата", "Функція додавання витрати ще не реалізована."))
-        btn_expense.grid(row=0, column=0, pady=(0, 12), ipady=8, sticky="ew")
-
-        btn_income = tb.Button(sidebar, text="Дохід", bootstyle="success-outline")
-        btn_income.grid(row=1, column=0, pady=12, ipady=8, sticky="ew")
-
-        btn_export = tb.Button(sidebar, text="Експорт (CSV)", bootstyle="warning-outline")
-        btn_export.grid(row=2, column=0, pady=12, ipady=8, sticky="ew")
-
-        lbl_cushion = tb.Label(
-            sidebar,
-            text="Подушка безпеки:\n1000 грн",
-            font=("Helvetica", 12, "bold"),
-            justify="center",
-        )
-        lbl_cushion.grid(row=3, column=0, pady=(28, 10), sticky="ew")
-
     def __draw_top_chart(self):
-        # Top dashboard matplotlib charts
-        frame_top_chart = tb.LabelFrame(self.__app_window, text="Динаміка балансу", padding=5)
-        frame_top_chart.grid(row=0, column=1, padx=(0, 8), pady=10, sticky="nsew")
-
-        # Matplotlib line chart figure and axis
-        fig_line, ax_line = plt.subplots(figsize=(4, 2), dpi=100)
         x_data = ["Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер"]
         y_data = np.array([14500, 13200, 15800, 12100, 13900, 16700, 18400])
-        ax_line.plot(x_data, y_data, color=SOLAR_YELLOW, linewidth=2.5)
-        ax_line.set_title("Динаміка балансу", fontsize=10)
-        ax_line.set_ylabel("Баланс, грн")
-        style_chart(fig_line, ax_line)
-
-        # Render line chart figure into tkinter
-        canvas_line = tkAgg.FigureCanvasTkAgg(fig_line, master=frame_top_chart)
-        canvas_line.get_tk_widget().pack(fill=BOTH, expand=True)
+        GraphChart(
+            row=0,
+            column=1,
+            x_data=x_data,
+            y_data=y_data,
+            master=self.__app_window,
+            title="Динаміка балансу",
+            y_label="Баланс, грн",
+            figsize=(4, 2),
+            padx=(0, 8),
+            chart_title="Динаміка балансу"
+        ).draw()
 
     def __draw_pie_chart(self):
-        # Pie chart frame
-        frame_pie_chart = tb.LabelFrame(self.__app_window, text="Розподіл витрат", padding=5)
-        frame_pie_chart.grid(row=0, column=2, padx=(8, 15), pady=10, sticky="nsew")
-
-        # Matplotlib pie chart figure and axis
-        fig_pie, ax_pie = plt.subplots(figsize=(3, 2), dpi=100)
-        labels = ["Їжа", "Утиль", "Бенз", "Розваги", "Квартира"]
-        colors = ["#cb4b16", "#2aa198", "#b58900", "#6c71c4", "#d33682"]
-        sizes = [30, 20, 15, 15, 20]
-        _, pie_labels, percentages = ax_pie.pie(
-            sizes,
-            labels=labels,
-            colors=colors,
-            autopct="%1.0f%%",
-            startangle=90,
-            wedgeprops={"edgecolor": SOLAR_PANEL},
-        )
-        fig_pie.patch.set_facecolor(SOLAR_PANEL)
-        ax_pie.set_facecolor(SOLAR_PANEL)
-        for pie_text in pie_labels + percentages:
-            pie_text.set_color(SOLAR_TEXT)
-        ax_pie.axis("equal")
-
-        # Render pie figure
-        canvas_pie = tkAgg.FigureCanvasTkAgg(fig_pie, master=frame_pie_chart)
-        canvas_pie.get_tk_widget().pack(fill=BOTH, expand=True)
+        expense_categories = ["Їжа", "Утиль", "Бенз", "Розваги", "Квартира"]
+        expense_colors = [PIE_RED, PIE_BLUE, PIE_YELLOW, PIE_PURPLE, PIE_PINK]
+        expense_percentages = [30, 20, 15, 15, 20]
+        PieChart(
+            row=0,
+            column=2,
+            sizes=expense_percentages,
+            master=self.__app_window,
+            categories=expense_categories,
+            colors=expense_colors,
+            title="Розподіл витрат"
+        ).draw()
 
     def __draw_date_selectors(self):
         # Date selector
-        frame_dates_center = tb.Frame(self.__app_window)
-        frame_dates_center.grid(row=1, column=1, padx=(0, 8), pady=5, sticky="ew")
-        tb.Label(frame_dates_center, text="від").pack(side=LEFT)
-        tb.DateEntry(frame_dates_center, width=10).pack(side=LEFT, expand=True, padx=5)
-        tb.Label(frame_dates_center, text="до").pack(side=LEFT)
-        tb.DateEntry(frame_dates_center, width=10).pack(side=LEFT, expand=True, padx=5)
-
+        DateRangeSelector(self.__app_window, row=1, column=1, padx=(0, 8)).draw()
+        DateRangeSelector(self.__app_window, row=1, column=2, padx=(8, 15)).draw()
         # Date selector
-        frame_dates_pie = tb.Frame(self.__app_window)
-        frame_dates_pie.grid(row=1, column=2, padx=(8, 15), pady=5, sticky="ew")
-        tb.Label(frame_dates_pie, text="від").pack(side=LEFT)
-        tb.DateEntry(frame_dates_pie, width=10).pack(side=LEFT, expand=True, padx=5)
-        tb.Label(frame_dates_pie, text="до").pack(side=LEFT)
-        tb.DateEntry(frame_dates_pie, width=10).pack(side=LEFT, expand=True, padx=5)
 
     def __draw_long_chart(self):
-        # Create frame for long chart
-        frame_long_chart = tb.LabelFrame(self.__app_window, text="Майбутній баланс", padding=5)
-        frame_long_chart.grid(row=2, column=1, columnspan=2, padx=(0, 15), pady=10, sticky="nsew")
-
-        # Create figure and axis for long chart
-        fig_long, ax_long = plt.subplots(figsize=(8, 1.5), dpi=100, constrained_layout=True)
         future_months = ["Вер", "Жов", "Лис", "Гру", "Січ", "Лют"]
         month_numbers = np.arange(len(future_months))
         monthly_changes = np.random.default_rng().integers(-1500, 2500, size=6)
         future_balance = 18400 + np.cumsum(monthly_changes)
-        ax_long.plot(month_numbers, future_balance, color=SOLAR_YELLOW, linewidth=2)
-        ax_long.fill_between(month_numbers, future_balance, color=SOLAR_YELLOW, alpha=0.3)
-        ax_long.set_xticks(month_numbers, future_months)
-        ax_long.set_ylabel("грн")
-        style_chart(fig_long, ax_long)
+        GraphChart(
+            row=2,
+            column=1,
+            columnspan=2,
+            x_data=month_numbers,
+            y_data=future_balance,
+            master=self.__app_window,
+            title="Майбутній баланс",
+            y_label="грн",
+            figsize=(8, 1.5),
+            padx=(0, 15),
+            constrained_layout=True,
+            fill_area=True,
+            x_tick_labels=future_months,
+            line_width=2,
+        ).draw()
 
-        # Render long canvas
-        canvas_long = tkAgg.FigureCanvasTkAgg(fig_long, master=frame_long_chart)
-        canvas_long.get_tk_widget().pack(fill=BOTH, expand=TRUE)
 
-    def __draw_alerts(self, app):
-        # Render alerts
-        spend_income_diff_alert = Alert(app, SPEND_INCOME_DIFF_TEXT_TEMPLATE, ORANGE_ALERT_STYLE, 3, 1).draw()
-        spend_increase_alert = Alert(app, SPEND_DIFF_TEXT_TEMPLATE, ORANGE_ALERT_STYLE, 3, 2).draw()
-        balance_growth_alert = Alert(app, BALANCE_GROWTH_TEXT_TEMPLATE, RED_ALERT_STYLE, 4, 1).draw()
-        spend_decrease_alert = Alert(app, SPEND_DIFF_TEXT_TEMPLATE, GREEN_ALERT_STYLE, 4, 2).draw()
