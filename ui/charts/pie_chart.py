@@ -25,19 +25,7 @@ class PieChart:
 
     def __prepare_plot(self):
         self.figure, self.axis = plt.subplots(figsize=(3, 2), dpi=100)
-        self.pie_slices, category_labels, percentage_labels = self.axis.pie(
-            self.sizes,
-            labels=self.categories,
-            colors=self.colors,
-            autopct="%1.0f%%",
-            startangle=90,
-            wedgeprops={"edgecolor": SOLAR_PANEL},
-        )
-        self.figure.patch.set_facecolor(SOLAR_PANEL)
-        self.axis.set_facecolor(SOLAR_PANEL)
-        for pie_text in category_labels + percentage_labels:
-            pie_text.set_color(SOLAR_TEXT)
-        self.axis.axis("equal")
+        self.__plot_data()
 
     def draw(self):
         self.tk_frame = tb.LabelFrame(self.master, text=self.title, padding=5)
@@ -47,3 +35,43 @@ class PieChart:
         self.tk_canvas = tkAgg.FigureCanvasTkAgg(self.figure, master=self.tk_frame)
         self.tk_canvas.get_tk_widget().pack(fill=BOTH, expand=True)
         return self
+
+    def __plot_data(self):
+        self.axis.clear()
+        self.figure.patch.set_facecolor(SOLAR_PANEL)
+        self.axis.set_facecolor(SOLAR_PANEL)
+
+        if not self.sizes or sum(self.sizes) == 0:
+            self.axis.text(
+                0.5,
+                0.5,
+                "Немає витрат",
+                color=SOLAR_TEXT,
+                ha="center",
+                va="center",
+                transform=self.axis.transAxes,
+            )
+            self.axis.set_xticks([])
+            self.axis.set_yticks([])
+            self.axis.axis("off")
+            return
+
+        self.axis.axis("on")
+        self.pie_slices, category_labels, percentage_labels = self.axis.pie(
+            self.sizes,
+            labels=self.categories,
+            colors=self.colors,
+            autopct="%1.0f%%",
+            startangle=90,
+            wedgeprops={"edgecolor": SOLAR_PANEL},
+        )
+        for pie_text in category_labels + percentage_labels:
+            pie_text.set_color(SOLAR_TEXT)
+        self.axis.axis("equal")
+
+    def update_data(self, sizes, categories, colors):
+        self.sizes = sizes
+        self.categories = categories
+        self.colors = colors
+        self.__plot_data()
+        self.tk_canvas.draw_idle()
