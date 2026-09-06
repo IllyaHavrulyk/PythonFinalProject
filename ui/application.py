@@ -1,21 +1,16 @@
-import matplotlib.backends.backend_tkagg as tkAgg
-import matplotlib.pyplot as plt
+import tkinter as tk
+
 import numpy as np
 import ttkbootstrap as tb
-from ttkbootstrap import Messagebox
-from ttkbootstrap.constants import *
-
-import tkinter as tk
 
 from constants import *
 from domain.balance import Balance
-from ui.alert import Alert
 from ui.charts.graph_chart import GraphChart
-from ui.charts.pie_chart import PieChart
+from ui.charts.pie.expense_list import ExpenseList
+from ui.charts.pie.pie_chart import PieChart
 from ui.dashboard_alerts import DashboardAlerts
 from ui.date_range_selector import DateRangeSelector
 from ui.sidebar import Sidebar
-from utils import style_chart
 
 
 class Application:
@@ -63,7 +58,6 @@ class Application:
         DashboardAlerts(self.__app_window).draw()
         self.__app_window.deiconify()
 
-
     def __ask_initial_balance(self):
         balance_var = tb.StringVar(value="0")
         result = {"balance": float(0)}
@@ -82,16 +76,16 @@ class Application:
             text="Введіть початковий баланс",
             font=("Helvetica", 13, "bold"),
         )
-        lbl_title.grid(column=0, row=0, pady=(0,12), sticky="nsew")
+        lbl_title.grid(column=0, row=0, pady=(0, 12), sticky="nsew")
 
         entry_balance = tb.Entry(container, textvariable=balance_var, width=28)
-        entry_balance.grid(column=1, row=0, pady=(0,8), sticky="ew")
+        entry_balance.grid(column=1, row=0, pady=(0, 8), sticky="ew")
 
         lbl_error = tb.Label(
             container,
             bootstyle="danger"
         )
-        lbl_error.grid(column=0, row=1, pady=(0,12), sticky="w")
+        lbl_error.grid(column=0, row=1, pady=(0, 12), sticky="w")
 
         def submit():
             entered_balance = balance_var.get().strip().replace(",", ".")
@@ -199,27 +193,12 @@ class Application:
     def __update_pie_chart(self):
         expense_totals, expense_categories, expense_colors = self.__get_expense_chart_data()
         self.pie_chart.update_data(expense_totals, expense_categories, expense_colors)
-        self.__update_expense_list()
+        self.expense_list.update(self.expense_start_date, self.expense_end_date)
 
     def __set_expense_filter(self, start_date, end_date):
         self.expense_start_date = start_date
         self.expense_end_date = end_date
         self.__update_pie_chart()
-
-    def __update_expense_list(self):
-        if self.expense_list is None:
-            return
-        self.expense_list.delete(*self.expense_list.get_children())
-        expenses = self.initial_balance.get_expenses_by_date_range(
-            self.expense_start_date,
-            self.expense_end_date
-        )
-        for expense in expenses:
-            self.expense_list.insert(
-                "",
-                "end",
-                values=(expense.date, expense.category, f"{expense.amount:,.2f} грн"),
-            )
 
     def __draw_date_selectors(self):
         # Date selector
@@ -236,6 +215,10 @@ class Application:
         self.__draw_expense_list(self.pie_date_selector.tk_frame)
         self.__update_pie_chart()
         # Date selector
+
+    def __draw_expense_list(self, master):
+        self.expense_list = ExpenseList(master, self.initial_balance, self.expense_start_date, self.expense_end_date)
+        self.expense_list.draw()
 
     def __draw_long_chart(self):
         future_months = ["Вер", "Жов", "Лис", "Гру", "Січ", "Лют"]
@@ -258,32 +241,3 @@ class Application:
             x_tick_labels=future_months,
             line_width=2,
         ).draw()
-
-    def __draw_expense_list(self, master):
-        table_frame = tb.LabelFrame(master, text="Витрати за період", padding=5)
-        table_frame.pack(fill=BOTH, expand=True)
-
-        table_container = tb.Frame(table_frame)
-        table_container.pack(fill=BOTH, expand=True)
-
-        scrollbar = tb.Scrollbar(table_container, orient="vertical")
-        scrollbar.pack(side="right", fill="y")
-
-        self.expense_list = tb.Treeview(
-            table_container,
-            columns=("date", "category", "amount"),
-            show="headings",
-            height=4,
-            yscrollcommand=scrollbar.set,
-        )
-        scrollbar.configure(command=self.expense_list.yview)
-
-        self.expense_list.heading("date", text="Дата")
-        self.expense_list.heading("category", text="Категорія")
-        self.expense_list.heading("amount", text="Сума")
-
-        self.expense_list.column("date", width=90, anchor=CENTER)
-        self.expense_list.column("category", width=110, anchor=CENTER)
-        self.expense_list.column("amount", width=90, anchor=E)
-        self.expense_list.pack(side=LEFT, fill=BOTH, expand=True)
-        self.__update_expense_list()
