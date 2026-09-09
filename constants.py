@@ -22,3 +22,13 @@ PIE_BLUE = "#2aa198"
 PIE_YELLOW = "#b58900"
 PIE_PURPLE = "#6c71c4"
 PIE_PINK = "#d33682"
+
+EXPENSE_CATEGORIES = ["Їжа", "Утиль", "Бенз", "Розваги", "Квартира"]
+
+EXPENSE_COLORS = {
+    "Їжа": PIE_RED,
+    "Утиль": PIE_BLUE,
+    "Бенз": PIE_YELLOW,
+    "Розваги": PIE_PURPLE,
+    "Квартира": PIE_PINK
+}
