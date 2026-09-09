@@ -1,5 +1,4 @@
-from ui.application import Application
+from ui.main_window import MainWindow
 
-app = Application("Менеджер витрат", "1920x1080")
-app.initialize()
-app.start()
+main_window = MainWindow("Менеджер витрат", "1920x1080")
+main_window.start()
