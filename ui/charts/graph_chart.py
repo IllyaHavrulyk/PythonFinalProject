@@ -1,7 +1,7 @@
 import matplotlib.backends.backend_tkagg as tkAgg
 import matplotlib.pyplot as plt
 import ttkbootstrap as tb
-from ttkbootstrap.constants import *
+from ttkbootstrap.constants import BOTH
 
 from constants import (
     CHART_DPI,
@@ -64,8 +64,8 @@ class GraphChart:
             sticky="nsew"
         )
 
-        self.__prepare_plot()
-        self.__plot_data(self.initial_x_data, self.initial_y_data)
+        self._prepare_plot()
+        self._plot_data(self.initial_x_data, self.initial_y_data)
         # Render line chart figure into tkinter
         self.tk_canvas = tkAgg.FigureCanvasTkAgg(self.figure, master=self.tk_frame)
         self.tk_canvas.get_tk_widget().pack(fill=BOTH, expand=True)
@@ -74,10 +74,10 @@ class GraphChart:
     def update(self, x_data, y_data):
         self.initial_x_data = list(x_data)
         self.initial_y_data = list(y_data)
-        self.__plot_data(self.initial_x_data, self.initial_y_data)
+        self._plot_data(self.initial_x_data, self.initial_y_data)
         self.tk_canvas.draw_idle()
 
-    def __prepare_plot(self):
+    def _prepare_plot(self):
         # Matplotlib line chart figure and axis
         self.figure, self.axis = plt.subplots(
             figsize=self.figsize,
@@ -85,7 +85,7 @@ class GraphChart:
             constrained_layout=self.constrained_layout
         )
 
-    def __plot_data(self, x_data, y_data):
+    def _plot_data(self, x_data, y_data):
         self.axis.clear()
         style_chart(self.figure, self.axis)
 
@@ -105,9 +105,10 @@ class GraphChart:
             return
 
         self.axis.set_axis_on()
+        numeric_y_data = [float(value) for value in y_data]
         self.axis.plot(
             x_data,
-            y_data,
+            numeric_y_data,
             color=SOLAR_YELLOW,
             linewidth=self.line_width,
             marker="o",
@@ -116,7 +117,7 @@ class GraphChart:
         if self.fill_area:
             self.axis.fill_between(
                 x_data,
-                y_data,
+                numeric_y_data,
                 color=SOLAR_YELLOW,
                 alpha=CHART_FILL_ALPHA,
             )

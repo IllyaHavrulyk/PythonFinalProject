@@ -24,12 +24,13 @@ from constants import (
     SUCCESS_STYLE,
     TOPMOST_DELAY_MS,
 )
+from domain.money import to_money
 
-class InitialBalanceWindow():
+class InitialBalanceWindow:
     def __init__(self, master):
         self.master = master
         self.balance_var = tb.StringVar(value=str(DEFAULT_BALANCE))
-        self.result = {"balance": float(DEFAULT_BALANCE)}
+        self.result = None
         self.lbl_error = None
         self.dialog = None
 
@@ -77,7 +78,7 @@ class InitialBalanceWindow():
         )
 
         self.dialog.bind(ENTER_KEY_EVENT, lambda _event: self.submit())
-        self.dialog.protocol(CLOSE_WINDOW_EVENT, self.dialog.destroy)
+        self.dialog.protocol(CLOSE_WINDOW_EVENT, self._cancel)
 
         entry_balance.focus_set()
         entry_balance.selection_range(0, tk.END)
@@ -101,7 +102,11 @@ class InitialBalanceWindow():
         return self
 
     def get_result(self):
-        return self.result["balance"]
+        return self.result
+
+    def _cancel(self):
+        self.result = None
+        self.dialog.destroy()
 
     def submit(self):
         entered_balance = self.balance_var.get().strip().replace(
@@ -109,8 +114,16 @@ class InitialBalanceWindow():
             NORMALIZED_DECIMAL_SEPARATOR,
         )
         try:
-            self.result["balance"] = float(entered_balance)
-        except ValueError:
+            balance = to_money(entered_balance)
+            if balance < 0:
+                raise ValueError
+            self.result = balance
+        except (TypeError, ValueError):
+            self.result = None
+            self.lbl_error.configure(text=INVALID_NUMBER_ERROR)
+            return
+        except ArithmeticError:
+            self.result = None
             self.lbl_error.configure(text=INVALID_NUMBER_ERROR)
             return
         self.dialog.destroy()

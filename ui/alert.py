@@ -9,17 +9,17 @@ class Alert:
         self.style = style
         self.row = row
         self.column = column
-        self.__tk_element = None
+        self._tk_element = None
     
     def draw(self):
-        self.__tk_element = tb.Label(
+        self._tk_element = tb.Label(
                     self.master,
                     text=self.text,
                     bootstyle=self.style,
                     padding=ALERT_PADDING,
                     anchor="center",
                 )
-        self.__tk_element.grid(
+        self._tk_element.grid(
             row=self.row,
             column=self.column,
             padx=RIGHT_PANEL_PADDING,
@@ -31,4 +31,4 @@ class Alert:
     def update(self, text, style):
         self.text = text
         self.style = style
-        self.__tk_element.configure(text=text, bootstyle=style)
+        self._tk_element.configure(text=text, bootstyle=style)

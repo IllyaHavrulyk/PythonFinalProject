@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 
@@ -56,7 +57,7 @@ def calculate_average_monthly_change(balance, months=FORECAST_MONTHS):
     ]
 
     if not transactions:
-        return 0.0
+        return Decimal("0.00")
 
     earliest_month = min(_month_start(transaction_date) for transaction_date, _ in transactions)
     month_count = (
@@ -66,13 +67,16 @@ def calculate_average_monthly_change(balance, months=FORECAST_MONTHS):
         + 1
     )
     average = sum(amount for _, amount in transactions) / min(months, max(1, month_count))
-    return round(average, 2)
+    return average.quantize(Decimal("0.01"))
 
 
 def calculate_balance_forecast(balance, months=FORECAST_MONTHS):
     monthly_change = calculate_average_monthly_change(balance, months)
     current_balance = balance.get_value()
-    return [round(current_balance + monthly_change * offset, 2) for offset in range(1, months + 1)]
+    return [
+        (current_balance + monthly_change * offset).quantize(Decimal("0.01"))
+        for offset in range(1, months + 1)
+    ]
 
 
 def get_future_month_labels(months=FORECAST_MONTHS):

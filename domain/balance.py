@@ -1,50 +1,58 @@
-from datetime import datetime
+from datetime import date
+from decimal import Decimal
 
 from domain.balance_snapshot import BalanceSnapshot
+from domain.expense import Expense
+from domain.income import Income
+from domain.money import to_money
 
 
 class Balance:
     def __init__(
             self,
             value,
-            repository=None,
             expenses=None,
             incomes=None,
             value_snapshots=None):
-        self.__value = value
-        self.__repository = repository
-        self.__expenses = list(expenses or [])
-        self.__incomes = list(incomes or [])
-        self.__value_snapshots = list(value_snapshots or [
-            BalanceSnapshot(date=datetime.now(), value=value)
+        self._value = to_money(value)
+        self._expenses = list(expenses or [])
+        self._incomes = list(incomes or [])
+        self._value_snapshots = list(value_snapshots or [
+            BalanceSnapshot(date=date.today(), value=self._value)
         ])
+        if not all(isinstance(item, Expense) for item in self._expenses):
+            raise TypeError("expenses must contain only Expense instances.")
+        if not all(isinstance(item, Income) for item in self._incomes):
+            raise TypeError("incomes must contain only Income instances.")
+        if not all(isinstance(item, BalanceSnapshot) for item in self._value_snapshots):
+            raise TypeError("value_snapshots must contain only BalanceSnapshot instances.")
 
-    def get_value(self):
-        return self.__value
+    def get_value(self) -> Decimal:
+        return self._value
 
-    def get_expenses(self):
-        return self.__expenses
+    def get_expenses(self) -> tuple[Expense, ...]:
+        return tuple(self._expenses)
 
-    def add_expense(self, expense):
-        new_value = self.__value - expense.amount
-        snapshot = BalanceSnapshot(expense.date, new_value)
-        if self.__repository is not None:
-            self.__repository.save_expense(expense, new_value, snapshot)
-        self.__expenses.append(expense)
-        self.__value = new_value
-        self.__value_snapshots.append(snapshot)
+    def add_expense(self, expense: Expense) -> BalanceSnapshot:
+        if not isinstance(expense, Expense):
+            raise TypeError("expense must be an Expense instance.")
+        self._value = to_money(self._value - expense.amount)
+        snapshot = BalanceSnapshot(expense.date, self._value)
+        self._expenses.append(expense)
+        self._value_snapshots.append(snapshot)
+        return snapshot
 
-    def add_income(self, income):
-        new_value = self.__value + income.amount
-        snapshot = BalanceSnapshot(income.date, new_value)
-        if self.__repository is not None:
-            self.__repository.save_income(income, new_value, snapshot)
-        self.__incomes.append(income)
-        self.__value = new_value
-        self.__value_snapshots.append(snapshot)
+    def add_income(self, income: Income) -> BalanceSnapshot:
+        if not isinstance(income, Income):
+            raise TypeError("income must be an Income instance.")
+        self._value = to_money(self._value + income.amount)
+        snapshot = BalanceSnapshot(income.date, self._value)
+        self._incomes.append(income)
+        self._value_snapshots.append(snapshot)
+        return snapshot
 
-    def get_value_snapshots(self):
-        return self.__value_snapshots
+    def get_value_snapshots(self) -> tuple[BalanceSnapshot, ...]:
+        return tuple(self._value_snapshots)
 
-    def get_incomes(self):
-        return self.__incomes
+    def get_incomes(self) -> tuple[Income, ...]:
+        return tuple(self._incomes)

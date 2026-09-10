@@ -28,8 +28,12 @@ def load_mock_data(repository):
             if month == current_month
             else month.replace(day=MOCK_TRANSACTION_DAY)
         )
-        balance.add_income(Income(transaction_date, income_amount))
+        income = Income(transaction_date, income_amount)
+        snapshot = balance.add_income(income)
+        repository.save_income(income, balance.get_value(), snapshot)
         for category, expense_amount in MOCK_MONTHLY_EXPENSES[index]:
-            balance.add_expense(Expense(transaction_date, category, expense_amount))
+            expense = Expense(transaction_date, category, expense_amount)
+            snapshot = balance.add_expense(expense)
+            repository.save_expense(expense, balance.get_value(), snapshot)
 
     return balance

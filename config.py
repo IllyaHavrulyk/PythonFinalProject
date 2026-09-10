@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
 
+from constants import APP_MODE_DEV, APP_MODE_TEST
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-VALID_APP_MODES = {"dev", "test"}
+VALID_APP_MODES = {APP_MODE_DEV, APP_MODE_TEST}
 
 
 def _read_env_file(path):
@@ -21,7 +22,7 @@ def _read_env_file(path):
 
 
 base_environment = _read_env_file(PROJECT_ROOT / ".env")
-APP_MODE = os.getenv("APP_MODE", base_environment.get("APP_MODE", "dev")).lower()
+APP_MODE = os.getenv("APP_MODE", base_environment.get("APP_MODE", APP_MODE_DEV)).lower()
 if APP_MODE not in VALID_APP_MODES:
     raise ValueError("APP_MODE must be either 'dev' or 'test'.")
 

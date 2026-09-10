@@ -1,5 +1,5 @@
 import ttkbootstrap as tb
-from ttkbootstrap.constants import *
+from ttkbootstrap.constants import BOTH, CENTER, E, LEFT
 
 from calculations.expense_utils import get_expenses_by_date_range
 from constants import (
@@ -18,10 +18,10 @@ from constants import (
 
 
 class ExpenseTable:
-    def __init__(self, master, initial_balance, expense_start_date, expense_end_date):
+    def __init__(self, master, balance, expense_start_date, expense_end_date):
         self.initial_expense_start_date = expense_start_date
         self.initial_expense_end_date = expense_end_date
-        self.initial_balance = initial_balance
+        self.balance = balance
         self.master = master
         self.expense_view = None
 
@@ -47,16 +47,16 @@ class ExpenseTable:
             yscrollcommand=scrollbar.set,
         )
         scrollbar.configure(command=self.expense_view.yview)
-        self.__init_headings()
-        self.__init_columns()
-        self.update(self.initial_balance.get_expenses(), self.initial_expense_start_date, self.initial_expense_end_date)
+        self._init_headings()
+        self._init_columns()
+        self.update(self.balance.get_expenses(), self.initial_expense_start_date, self.initial_expense_end_date)
 
-    def __init_headings(self):
+    def _init_headings(self):
         self.expense_view.heading("date", text=DATE_HEADING)
         self.expense_view.heading("category", text=CATEGORY_HEADING)
         self.expense_view.heading("amount", text=AMOUNT_HEADING)
 
-    def __init_columns(self):
+    def _init_columns(self):
         self.expense_view.column("date", width=DATE_COLUMN_WIDTH, anchor=CENTER)
         self.expense_view.column("category", width=CATEGORY_COLUMN_WIDTH, anchor=CENTER)
         self.expense_view.column("amount", width=AMOUNT_COLUMN_WIDTH, anchor=E)

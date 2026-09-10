@@ -1,5 +1,4 @@
 import tkinter as tk
-from datetime import date
 
 import ttkbootstrap as tb
 
@@ -44,9 +43,8 @@ from constants import (
     SIDEBAR_PADDING,
     THOUSANDS_SEPARATOR,
 )
-from domain.balance import Balance
-from domain.expense import Expense
-from domain.income import Income
+from domain.money import positive_money
+from services.finance_service import FinanceService
 
 
 class Sidebar:
@@ -56,47 +54,48 @@ class Sidebar:
             row=0,
             column=0,
             rowspan=5,
-            balance=0,
+            finance_service: FinanceService = None,
             expense_categories=None,
-            on_expense_added=None, ):
+            on_balance_changed=None, ):
         self.master = master
         self.row = row
         self.column = column
         self.rowspan = rowspan
         self.tk_frame = None
-        self.balance = balance if hasattr(balance, "get_value") else Balance(balance)
+        if finance_service is None:
+            raise ValueError("finance_service is required")
+        self.finance_service = finance_service
         self.expense_categories = expense_categories or EXPENSE_CATEGORIES
-        self.on_expense_added = on_expense_added
+        self.on_balance_changed = on_balance_changed
         self.lbl_balance = None
 
-    def __format_balance(self):
+    def _format_balance(self):
         return BALANCE_TEXT_TEMPLATE.format(
-            balance=self.balance.get_value(),
+            balance=self.finance_service.balance.get_value(),
             currency=CURRENCY_LABEL,
         )
 
-    def __parse_amount(self, value):
+    def _parse_amount(self, value):
         try:
-            amount = float(
+            return positive_money(
                 value.strip().replace(
                     INPUT_DECIMAL_SEPARATOR,
                     NORMALIZED_DECIMAL_SEPARATOR,
                 )
             )
-        except ValueError:
+        except (TypeError, ValueError):
             return None
-        return amount if amount > 0 else None
 
-    def __center_dialog(self, dialog):
+    def _center_dialog(self, dialog):
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() - dialog.winfo_width()) / 2
         y = (dialog.winfo_screenheight() - dialog.winfo_height()) / 2
         dialog.geometry(f"+{int(x)}+{int(y)}")
 
-    def __refresh_balance(self):
-        self.lbl_balance.configure(text=self.__format_balance())
+    def _refresh_balance(self):
+        self.lbl_balance.configure(text=self._format_balance())
 
-    def __show_income_dialog(self):
+    def _show_income_dialog(self):
         amount_var = tk.StringVar()
         dialog = tb.Toplevel(self.master)
         dialog.title(INCOME_DIALOG_TITLE)
@@ -126,15 +125,15 @@ class Sidebar:
         lbl_error.grid(row=2, column=0, sticky="w")
 
         def submit():
-            amount = self.__parse_amount(amount_var.get())
+            amount = self._parse_amount(amount_var.get())
 
             if amount is None:
                 lbl_error.configure(text=ENTER_AMOUNT_ERROR)
                 return
-            self.balance.add_income(Income(date.today(), amount))
-            self.__refresh_balance()
-            if self.on_expense_added:
-                self.on_expense_added()
+            self.finance_service.add_income(amount)
+            self._refresh_balance()
+            if self.on_balance_changed:
+                self.on_balance_changed()
             dialog.destroy()
 
         tb.Button(
@@ -146,11 +145,11 @@ class Sidebar:
             row=3, column=0, ipady=DIALOG_BUTTON_INTERNAL_PADDING, sticky="ew",
         )
         dialog.bind(ENTER_KEY_EVENT, lambda e: submit())
-        self.__center_dialog(dialog)
+        self._center_dialog(dialog)
         entry_amount.focus_set()
         self.master.wait_window(dialog)
 
-    def __show_expense_dialog(self):
+    def _show_expense_dialog(self):
         amount_var = tk.StringVar()
         category_var = tk.StringVar(value=DEFAULT_EXPENSE_CATEGORY)
         dialog = tb.Toplevel(self.master)
@@ -199,16 +198,15 @@ class Sidebar:
         lbl_error.grid(row=4, column=0, sticky="w")
 
         def submit():
-            amount = self.__parse_amount(amount_var.get())
+            amount = self._parse_amount(amount_var.get())
 
             if amount is None:
                 lbl_error.configure(text=ENTER_VALID_AMOUNT_ERROR)
                 return
-            expense = Expense(date.today(), category_var.get(), amount)
-            self.balance.add_expense(expense)
-            self.__refresh_balance()
-            if self.on_expense_added:
-                self.on_expense_added()
+            self.finance_service.add_expense(amount, category_var.get())
+            self._refresh_balance()
+            if self.on_balance_changed:
+                self.on_balance_changed()
             dialog.destroy()
 
         tb.Button(
@@ -220,7 +218,7 @@ class Sidebar:
             row=5, column=0, ipady=DIALOG_BUTTON_INTERNAL_PADDING, sticky="ew",
         )
         dialog.bind(ENTER_KEY_EVENT, lambda e: submit())
-        self.__center_dialog(dialog)
+        self._center_dialog(dialog)
         entry_amount.focus_set()
         self.master.wait_window(dialog)
 
@@ -232,7 +230,7 @@ class Sidebar:
 
         btn_expense = tb.Button(self.tk_frame, text=EXPENSE_BUTTON_TEXT,
                                 bootstyle=EXPENSE_BUTTON_STYLE,
-                                command=self.__show_expense_dialog)
+                                command=self._show_expense_dialog)
         btn_expense.grid(
             row=0, column=0, pady=SIDEBAR_FIRST_BUTTON_PADDING,
             ipady=SIDEBAR_BUTTON_INTERNAL_PADDING, sticky="ew",
@@ -241,7 +239,7 @@ class Sidebar:
         btn_income = tb.Button(self.tk_frame,
                                text=INCOME_BUTTON_TEXT,
                                bootstyle=INCOME_BUTTON_STYLE,
-                               command=self.__show_income_dialog)
+                               command=self._show_income_dialog)
         btn_income.grid(
             row=1, column=0, pady=SIDEBAR_BUTTON_PADDING,
             ipady=SIDEBAR_BUTTON_INTERNAL_PADDING, sticky="ew",
@@ -259,7 +257,7 @@ class Sidebar:
 
         self.lbl_balance = tb.Label(
             self.tk_frame,
-            text=self.__format_balance(),
+            text=self._format_balance(),
             font=(FONT_FAMILY, BODY_FONT_SIZE, FONT_WEIGHT_BOLD),
             justify="center",
         )

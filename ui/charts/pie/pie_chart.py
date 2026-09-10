@@ -1,7 +1,7 @@
 import matplotlib.backends.backend_tkagg as tkAgg
 import matplotlib.pyplot as plt
 import ttkbootstrap as tb
-from ttkbootstrap.constants import *
+from ttkbootstrap.constants import BOTH
 
 from constants import (
     CHART_DPI,
@@ -34,12 +34,12 @@ class PieChart:
         self.pie_slices = None
         # Matplotlib pie chart figure and axis
 
-    def __prepare_plot(self):
+    def _prepare_plot(self):
         self.figure, self.axis = plt.subplots(
             figsize=PIE_CHART_FIGURE_SIZE,
             dpi=CHART_DPI,
         )
-        self.__plot_data()
+        self._plot_data()
 
     def draw(self):
         self.tk_frame = tb.LabelFrame(
@@ -55,12 +55,12 @@ class PieChart:
             sticky="nsew",
         )
 
-        self.__prepare_plot()
+        self._prepare_plot()
         self.tk_canvas = tkAgg.FigureCanvasTkAgg(self.figure, master=self.tk_frame)
         self.tk_canvas.get_tk_widget().pack(fill=BOTH, expand=True)
         return self
 
-    def __plot_data(self):
+    def _plot_data(self):
         self.axis.clear()
         self.figure.patch.set_facecolor(SOLAR_PANEL)
         self.axis.set_facecolor(SOLAR_PANEL)
@@ -82,7 +82,7 @@ class PieChart:
 
         self.axis.axis("on")
         self.pie_slices, category_labels, percentage_labels = self.axis.pie(
-            self.sizes,
+            [float(size) for size in self.sizes],
             labels=self.categories,
             colors=self.colors,
             autopct=PIE_PERCENT_FORMAT,
@@ -97,5 +97,5 @@ class PieChart:
         self.sizes = sizes
         self.categories = categories
         self.colors = colors
-        self.__plot_data()
+        self._plot_data()
         self.tk_canvas.draw_idle()

@@ -40,7 +40,7 @@ class DateRangeSelector:
 
         return from_date, to_date
 
-    def __notify_change(self, _event=None):
+    def _notify_change(self, _event=None):
         if self.on_change:
             self.on_change(*self.get_date_range())
 
@@ -78,11 +78,11 @@ class DateRangeSelector:
                 controls_frame,
                 text=APPLY_BUTTON_TEXT,
                 bootstyle=APPLY_BUTTON_STYLE,
-                command=self.__notify_change
+                command=self._notify_change
             ).pack(side=LEFT, padx=(CONTROL_GAP, 0))
 
         for date_entry in (self.from_date_entry, self.to_date_entry):
-            date_entry.bind(DATE_SELECTED_EVENT, self.__notify_change)
-            date_entry.bind(ENTER_KEY_EVENT, self.__notify_change)
-            date_entry.bind(FOCUS_OUT_EVENT, self.__notify_change)
+            date_entry.bind(DATE_SELECTED_EVENT, self._notify_change)
+            date_entry.bind(ENTER_KEY_EVENT, self._notify_change)
+            date_entry.bind(FOCUS_OUT_EVENT, self._notify_change)
         return self

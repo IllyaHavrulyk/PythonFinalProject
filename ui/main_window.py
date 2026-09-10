@@ -2,7 +2,7 @@ import ttkbootstrap as tb
 
 from calculations.dashboard_utils import calculate_balance_forecast, get_future_month_labels
 from calculations.expense_utils import get_expense_totals_by_category, filter_balance_snapshots
-from config import APP_MODE, DATABASE_PATH, RESET_DATA_ON_START
+from config import APP_MODE, RESET_DATA_ON_START
 from constants import (
     APP_MIN_HEIGHT,
     APP_MIN_WIDTH,
@@ -24,8 +24,7 @@ from constants import (
     TOP_CHART_TITLE,
     CURRENCY_AXIS_LABEL,
 )
-from persistence.mock_data import load_mock_data
-from persistence.sqlite_repository import SQLiteBalanceRepository
+from services.finance_service import FinanceService
 from ui.charts.graph_chart import GraphChart
 from ui.charts.pie.expense_table import ExpenseTable
 from ui.charts.pie.pie_chart import PieChart
@@ -40,7 +39,7 @@ class MainWindow:
             self,
             app_name,
             geometry,
-            database_path=DATABASE_PATH,
+            finance_service: FinanceService,
             app_mode=APP_MODE,
             reset_data_on_start=RESET_DATA_ON_START):
         self.expense_end_date = None
@@ -48,7 +47,7 @@ class MainWindow:
         self.app_name = app_name
         self.geometry = geometry
         self.window = None
-        self.initial_balance = None
+        self.balance = None
         self.sidebar = None
         self.pie_chart = None
         self.expense_table = None
@@ -56,9 +55,9 @@ class MainWindow:
         self.dashboard_alerts = None
         self.app_mode = app_mode
         self.reset_data_on_start = reset_data_on_start
-        self.repository = SQLiteBalanceRepository(database_path)
+        self.finance_service = finance_service
 
-    def init_window(self):
+    def _init_window(self):
         self.window = tb.Window(themename=APP_THEME)
         self.window.title(self.app_name)
         self.window.geometry(self.geometry)
@@ -66,29 +65,38 @@ class MainWindow:
         self.window.withdraw()
 
     def setup(self):
-        self.init_window()
-        self.initial_balance = self.repository.load_balance()
-        if self.app_mode == "test" and (
-                self.reset_data_on_start or self.initial_balance is None):
-            self.initial_balance = load_mock_data(self.repository)
-        elif self.initial_balance is None:
-            self.initial_balance = self.repository.create_balance(self.__ask_initial_balance())
-        self.__configure_grid()
-        self.__draw_sidebar()
-        self.__draw_top_chart()
+        self._init_window()
+        self.balance = self.finance_service.initialize(
+            self.app_mode,
+            self.reset_data_on_start,
+        )
+        if self.balance is None:
+            initial_balance = self._ask_initial_balance()
+            if initial_balance is None:
+                self.window.destroy()
+                return False
+            self.balance = self.finance_service.initialize(
+                self.app_mode,
+                self.reset_data_on_start,
+                initial_balance,
+            )
+        self._configure_grid()
+        self._draw_sidebar()
+        self._draw_top_chart()
 
-        self.__draw_pie_chart()
-        self.__draw_date_selectors()
-        self.__draw_long_chart()
-        self.__draw_dashboard_alerts()
+        self._draw_pie_chart()
+        self._draw_date_selectors()
+        self._draw_long_chart()
+        self._draw_dashboard_alerts()
 
         self.window.deiconify()
+        return True
 
-    def __ask_initial_balance(self):
+    def _ask_initial_balance(self):
         initial_balance_window = InitialBalanceWindow(self.window).draw()
         return initial_balance_window.get_result()
 
-    def __configure_grid(self):
+    def _configure_grid(self):
         # Keep navigation in its own column. The chart columns are the only columns
         # that grow when the window is maximized.
         self.window.columnconfigure(0, weight=0, minsize=SIDEBAR_MIN_WIDTH)
@@ -98,29 +106,29 @@ class MainWindow:
         self.window.rowconfigure(2, weight=0, minsize=FORECAST_CHART_MIN_HEIGHT)
         self.window.rowconfigure((3, 4), weight=0)
 
-    def __draw_sidebar(self):
+    def _draw_sidebar(self):
         self.sidebar = Sidebar(
             self.window,
-            balance=self.initial_balance,
-            expense_categories=[category.name for category in self.repository.load_categories()],
-            on_expense_added=self.update_charts
+            finance_service=self.finance_service,
+            expense_categories=self.finance_service.get_categories(),
+            on_balance_changed=self.update_charts,
         )
         self.sidebar.draw()
 
     def update_charts(self):
-        expense_totals, expense_categories, expense_colors = self.__get_expense_chart_data()
-        filtered_snapshots = filter_balance_snapshots(self.initial_balance.get_value_snapshots())
+        expense_totals, expense_categories, expense_colors = self._get_expense_chart_data()
+        filtered_snapshots = filter_balance_snapshots(self.balance.get_value_snapshots())
         self.pie_chart.update(expense_totals, expense_categories, expense_colors)
-        self.expense_table.update(self.initial_balance.get_expenses(), self.expense_start_date, self.expense_end_date)
+        self.expense_table.update(self.balance.get_expenses(), self.expense_start_date, self.expense_end_date)
         self.top_chart.update(filtered_snapshots.keys(), filtered_snapshots.values())
         if self.future_chart is not None:
-            future_balance = calculate_balance_forecast(self.initial_balance)
+            future_balance = calculate_balance_forecast(self.balance)
             self.future_chart.update(range(len(future_balance)), future_balance)
         if self.dashboard_alerts is not None:
             self.dashboard_alerts.update()
-    def __get_expense_chart_data(self):
+    def _get_expense_chart_data(self):
         totals_by_category = get_expense_totals_by_category(
-            self.initial_balance.get_expenses(),
+            self.balance.get_expenses(),
             self.expense_start_date,
             self.expense_end_date
         )
@@ -135,8 +143,8 @@ class MainWindow:
         colors = [EXPENSE_COLORS[category] for category in categories]
         return sizes, categories, colors
 
-    def __draw_top_chart(self):
-        filtered_snapshots = filter_balance_snapshots(self.initial_balance.get_value_snapshots())
+    def _draw_top_chart(self):
+        filtered_snapshots = filter_balance_snapshots(self.balance.get_value_snapshots())
         self.top_chart = GraphChart(
             row=0,
             column=1,
@@ -151,8 +159,8 @@ class MainWindow:
         )
         self.top_chart.draw()
 
-    def __draw_pie_chart(self):
-        expense_totals, expense_categories, expense_colors = self.__get_expense_chart_data()
+    def _draw_pie_chart(self):
+        expense_totals, expense_categories, expense_colors = self._get_expense_chart_data()
         self.pie_chart = PieChart(
             row=0,
             column=2,
@@ -163,34 +171,34 @@ class MainWindow:
             title=EXPENSE_CHART_TITLE,
         ).draw()
 
-    def __draw_date_selectors(self):
+    def _draw_date_selectors(self):
         # Date selector
         self.expense_date_selector = DateRangeSelector(
             self.window,
             row=1,
             column=2,
             padx=RIGHT_PANEL_PADDING,
-            on_change=self.__set_expense_filter,
+            on_change=self._set_expense_filter,
             show_apply=True
         ).draw()
         self.expense_start_date, self.expense_end_date = self.expense_date_selector.get_date_range()
-        self.__draw_expense_table(self.expense_date_selector.tk_frame)
+        self._draw_expense_table(self.expense_date_selector.tk_frame)
         self.update_charts()
         # Date selector
 
-    def __draw_expense_table(self, master):
-        self.expense_table = ExpenseTable(master, self.initial_balance, self.expense_start_date, self.expense_end_date)
+    def _draw_expense_table(self, master):
+        self.expense_table = ExpenseTable(master, self.balance, self.expense_start_date, self.expense_end_date)
         self.expense_table.draw()
 
-    def __set_expense_filter(self, start_date, end_date):
+    def _set_expense_filter(self, start_date, end_date):
         self.expense_start_date = start_date
         self.expense_end_date = end_date
         self.update_charts()
 
-    def __draw_long_chart(self):
+    def _draw_long_chart(self):
         future_months = get_future_month_labels()
         month_numbers = range(len(future_months))
-        future_balance = calculate_balance_forecast(self.initial_balance)
+        future_balance = calculate_balance_forecast(self.balance)
         self.future_chart = GraphChart(
             row=2,
             column=1,
@@ -208,10 +216,10 @@ class MainWindow:
             line_width=FORECAST_LINE_WIDTH,
         ).draw()
 
-    def __draw_dashboard_alerts(self):
-        self.dashboard_alerts = DashboardAlerts(self.window, self.initial_balance)
+    def _draw_dashboard_alerts(self):
+        self.dashboard_alerts = DashboardAlerts(self.window, self.balance)
         self.dashboard_alerts.draw()
 
     def start(self):
-        self.setup()
-        self.window.mainloop()
+        if self.setup():
+            self.window.mainloop()
