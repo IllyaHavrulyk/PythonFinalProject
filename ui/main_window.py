@@ -3,7 +3,7 @@ import ttkbootstrap as tb
 from calculations.dashboard_utils import calculate_balance_forecast, get_future_month_labels
 from calculations.expense_utils import get_expense_totals_by_category, filter_balance_snapshots
 from constants import EXPENSE_CATEGORIES, EXPENSE_COLORS
-from domain.balance import Balance
+from persistence.sqlite_repository import DEFAULT_DATABASE_PATH, SQLiteBalanceRepository
 from ui.charts.graph_chart import GraphChart
 from ui.charts.pie.expense_table import ExpenseTable
 from ui.charts.pie.pie_chart import PieChart
@@ -14,7 +14,7 @@ from ui.sidebar import Sidebar
 
 
 class MainWindow:
-    def __init__(self, app_name, geometry):
+    def __init__(self, app_name, geometry, database_path=DEFAULT_DATABASE_PATH):
         self.expense_end_date = None
         self.expense_start_date = None
         self.app_name = app_name
@@ -26,6 +26,7 @@ class MainWindow:
         self.expense_table = None
         self.future_chart = None
         self.dashboard_alerts = None
+        self.repository = SQLiteBalanceRepository(database_path)
 
     def init_window(self):
         self.window = tb.Window(themename="solar")
@@ -36,7 +37,9 @@ class MainWindow:
 
     def setup(self):
         self.init_window()
-        self.initial_balance = Balance(self.__ask_initial_balance())
+        self.initial_balance = self.repository.load_balance()
+        if self.initial_balance is None:
+            self.initial_balance = self.repository.create_balance(self.__ask_initial_balance())
         self.__configure_grid()
         self.__draw_sidebar()
         self.__draw_top_chart()
@@ -66,7 +69,7 @@ class MainWindow:
         self.sidebar = Sidebar(
             self.window,
             balance=self.initial_balance,
-            expense_categories=EXPENSE_CATEGORIES,
+            expense_categories=[category.name for category in self.repository.load_categories()],
             on_expense_added=self.update_charts
         )
         self.sidebar.draw()
