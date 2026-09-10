@@ -29,8 +29,8 @@ class GraphChart:
         self.column = column
         self.row = row
         self.columnspan = columnspan
-        self.x_data = x_data
-        self.y_data = y_data
+        self.initial_x_data = x_data
+        self.initial_y_data = y_data
         self.title = title
         self.master = master
         self.tk_frame = None
@@ -51,10 +51,17 @@ class GraphChart:
         )
 
         self.__prepare_plot()
+        self.__plot_data(self.initial_x_data, self.initial_y_data)
         # Render line chart figure into tkinter
         self.tk_canvas = tkAgg.FigureCanvasTkAgg(self.figure, master=self.tk_frame)
         self.tk_canvas.get_tk_widget().pack(fill=BOTH, expand=True)
         return self
+
+    def update(self, x_data, y_data):
+        self.initial_x_data = list(x_data)
+        self.initial_y_data = list(y_data)
+        self.__plot_data(self.initial_x_data, self.initial_y_data)
+        self.tk_canvas.draw_idle()
 
     def __prepare_plot(self):
         # Matplotlib line chart figure and axis
@@ -63,15 +70,41 @@ class GraphChart:
             dpi=100,
             constrained_layout=self.constrained_layout
         )
-        self.axis.plot(self.x_data, self.y_data, color=SOLAR_YELLOW, linewidth=self.line_width)
+
+    def __plot_data(self, x_data, y_data):
+        self.axis.clear()
+        style_chart(self.figure, self.axis)
+
+        if len(x_data) == 0 or len(y_data) == 0:
+            self.axis.text(
+                0.5,
+                0.5,
+                "Немає даних",
+                color=SOLAR_TEXT,
+                ha="center",
+                va="center",
+                transform=self.axis.transAxes,
+            )
+            self.axis.set_xticks([])
+            self.axis.set_yticks([])
+            self.axis.axis("off")
+            return
+
+        self.axis.set_axis_on()
+        self.axis.plot(
+            x_data,
+            y_data,
+            color=SOLAR_YELLOW,
+            linewidth=self.line_width,
+            marker="o",
+        )
 
         if self.fill_area:
-            self.axis.fill_between(self.x_data, self.y_data, color=SOLAR_YELLOW, alpha=0.3)
+            self.axis.fill_between(x_data, y_data, color=SOLAR_YELLOW, alpha=0.3)
 
         if self.x_tick_labels is not None:
-            self.axis.set_xticks(self.x_data, self.x_tick_labels)
+            self.axis.set_xticks(x_data, self.x_tick_labels)
 
         if self.chart_title:
             self.axis.set_title(self.chart_title, fontsize=10)
         self.axis.set_ylabel(self.y_label)
-        style_chart(self.figure, self.axis)

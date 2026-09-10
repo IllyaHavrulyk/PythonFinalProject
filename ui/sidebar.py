@@ -1,11 +1,11 @@
 import tkinter as tk
+from datetime import date
+
 import ttkbootstrap as tb
-from ttkbootstrap import Messagebox
 
 from domain.balance import Balance
 from domain.expense import Expense
 from domain.income import Income
-from datetime import date
 
 
 class Sidebar:
@@ -17,17 +17,16 @@ class Sidebar:
             rowspan=5,
             balance=0,
             expense_categories=None,
-            on_expense_added=None,):
+            on_expense_added=None, ):
         self.master = master
         self.row = row
         self.column = column
         self.rowspan = rowspan
         self.tk_frame = None
-        self.balance= balance if hasattr(balance, "get_value") else Balance(balance)
+        self.balance = balance if hasattr(balance, "get_value") else Balance(balance)
         self.expense_categories = expense_categories or ["Їжа", "Утиль", "Бенз", "Розваги", "Квартира"]
         self.on_expense_added = on_expense_added
         self.lbl_balance = None
-
 
     def __format_balance(self):
         return f"Баланс: \n {self.balance.get_value():,.2f} грн"
@@ -43,7 +42,7 @@ class Sidebar:
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() - dialog.winfo_width()) / 2
         y = (dialog.winfo_screenheight() - dialog.winfo_height()) / 2
-        dialog.geometry(f"{int(x)}x{int(y)}")
+        dialog.geometry(f"+{int(x)}+{int(y)}")
 
     def __refresh_balance(self):
         self.lbl_balance.configure(text=self.__format_balance())
@@ -81,6 +80,8 @@ class Sidebar:
                 return
             self.balance.add_income(Income(date.today(), amount))
             self.__refresh_balance()
+            if self.on_expense_added:
+                self.on_expense_added()
             dialog.destroy()
 
         tb.Button(container, text="Додати", bootstyle="success-outline", command=submit).grid(

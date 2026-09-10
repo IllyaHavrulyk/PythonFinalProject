@@ -1,18 +1,6 @@
-import numpy as np
-import ttkbootstrap as tb
-from ttkbootstrap.constants import *
-
 import tkinter as tk
 
-from calculations.expense_utils import get_expense_totals_by_category
-from constants import *
-from domain.balance import Balance
-from ui.charts.graph_chart import GraphChart
-from ui.charts.pie.expense_table import ExpenseTable
-from ui.charts.pie.pie_chart import PieChart
-from ui.dashboard_alerts import DashboardAlerts
-from ui.date_range_selector import DateRangeSelector
-from ui.sidebar import Sidebar
+import ttkbootstrap as tb
 
 
 class InitialBalanceWindow():
@@ -66,7 +54,7 @@ class InitialBalanceWindow():
         self.dialog.update_idletasks()
         x = (self.dialog.winfo_screenwidth() - self.dialog.winfo_width()) // 2
         y = (self.dialog.winfo_screenheight() - self.dialog.winfo_height()) // 2
-        self.dialog.geometry(f"{int(x)}x{int(y)}")
+        self.dialog.geometry(f"+{int(x)}+{int(y)}")
         self.dialog.deiconify()
         self.dialog.lift()
 
@@ -96,4 +84,3 @@ class InitialBalanceWindow():
     def disable_topmost(self):
         if self.dialog.winfo_exists():
             self.dialog.attributes("-topmost", False)
-

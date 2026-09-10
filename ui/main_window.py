@@ -1,7 +1,7 @@
-import numpy as np
 import ttkbootstrap as tb
 
-from calculations.expense_utils import get_expense_totals_by_category
+from calculations.dashboard_utils import calculate_balance_forecast, get_future_month_labels
+from calculations.expense_utils import get_expense_totals_by_category, filter_balance_snapshots
 from constants import EXPENSE_CATEGORIES, EXPENSE_COLORS
 from domain.balance import Balance
 from ui.charts.graph_chart import GraphChart
@@ -24,7 +24,8 @@ class MainWindow:
         self.sidebar = None
         self.pie_chart = None
         self.expense_table = None
-
+        self.future_chart = None
+        self.dashboard_alerts = None
 
     def init_window(self):
         self.window = tb.Window(themename="solar")
@@ -50,7 +51,7 @@ class MainWindow:
     def __ask_initial_balance(self):
         initial_balance_window = InitialBalanceWindow(self.window).draw()
         return initial_balance_window.get_result()
-    
+
     def __configure_grid(self):
         # Keep navigation in its own column. The chart columns are the only columns
         # that grow when the window is maximized.
@@ -66,15 +67,21 @@ class MainWindow:
             self.window,
             balance=self.initial_balance,
             expense_categories=EXPENSE_CATEGORIES,
-            on_expense_added=self.__update_pie_chart
+            on_expense_added=self.update_charts
         )
         self.sidebar.draw()
 
-    def __update_pie_chart(self):
+    def update_charts(self):
         expense_totals, expense_categories, expense_colors = self.__get_expense_chart_data()
-        self.pie_chart.update_data(expense_totals, expense_categories, expense_colors)
+        filtered_snapshots = filter_balance_snapshots(self.initial_balance.get_value_snapshots())
+        self.pie_chart.update(expense_totals, expense_categories, expense_colors)
         self.expense_table.update(self.initial_balance.get_expenses(), self.expense_start_date, self.expense_end_date)
-
+        self.top_chart.update(filtered_snapshots.keys(), filtered_snapshots.values())
+        if self.future_chart is not None:
+            future_balance = calculate_balance_forecast(self.initial_balance)
+            self.future_chart.update(range(len(future_balance)), future_balance)
+        if self.dashboard_alerts is not None:
+            self.dashboard_alerts.update()
     def __get_expense_chart_data(self):
         totals_by_category = get_expense_totals_by_category(
             self.initial_balance.get_expenses(),
@@ -93,13 +100,12 @@ class MainWindow:
         return sizes, categories, colors
 
     def __draw_top_chart(self):
-        x_data = ["Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер"]
-        y_data = np.array([14500, 13200, 15800, 12100, 13900, 16700, 18400])
+        filtered_snapshots = filter_balance_snapshots(self.initial_balance.get_value_snapshots())
         self.top_chart = GraphChart(
             row=0,
             column=1,
-            x_data=x_data,
-            y_data=y_data,
+            x_data=filtered_snapshots.keys(),
+            y_data=filtered_snapshots.values(),
             master=self.window,
             title="Динаміка балансу",
             y_label="Баланс, грн",
@@ -123,8 +129,7 @@ class MainWindow:
 
     def __draw_date_selectors(self):
         # Date selector
-        DateRangeSelector(self.window, row=1, column=1, padx=(0, 8)).draw()
-        self.pie_date_selector = DateRangeSelector(
+        self.expense_date_selector = DateRangeSelector(
             self.window,
             row=1,
             column=2,
@@ -132,9 +137,9 @@ class MainWindow:
             on_change=self.__set_expense_filter,
             show_apply=True
         ).draw()
-        self.expense_start_date, self.expense_end_date = self.pie_date_selector.get_date_range()
-        self.__draw_expense_table(self.pie_date_selector.tk_frame)
-        self.__update_pie_chart()
+        self.expense_start_date, self.expense_end_date = self.expense_date_selector.get_date_range()
+        self.__draw_expense_table(self.expense_date_selector.tk_frame)
+        self.update_charts()
         # Date selector
 
     def __draw_expense_table(self, master):
@@ -144,14 +149,13 @@ class MainWindow:
     def __set_expense_filter(self, start_date, end_date):
         self.expense_start_date = start_date
         self.expense_end_date = end_date
-        self.__update_pie_chart()
+        self.update_charts()
 
     def __draw_long_chart(self):
-        future_months = ["Вер", "Жов", "Лис", "Гру", "Січ", "Лют"]
-        month_numbers = np.arange(len(future_months))
-        monthly_changes = np.random.default_rng().integers(-1500, 2500, size=6)
-        future_balance = 18400 + np.cumsum(monthly_changes)
-        GraphChart(
+        future_months = get_future_month_labels()
+        month_numbers = range(len(future_months))
+        future_balance = calculate_balance_forecast(self.initial_balance)
+        self.future_chart = GraphChart(
             row=2,
             column=1,
             columnspan=2,
@@ -169,7 +173,7 @@ class MainWindow:
         ).draw()
 
     def __draw_dashboard_alerts(self):
-        self.dashboard_alerts = DashboardAlerts(self.window)
+        self.dashboard_alerts = DashboardAlerts(self.window, self.initial_balance)
         self.dashboard_alerts.draw()
 
     def start(self):

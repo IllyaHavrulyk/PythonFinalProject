@@ -69,7 +69,7 @@ class PieChart:
             pie_text.set_color(SOLAR_TEXT)
         self.axis.axis("equal")
 
-    def update_data(self, sizes, categories, colors):
+    def update(self, sizes, categories, colors):
         self.sizes = sizes
         self.categories = categories
         self.colors = colors

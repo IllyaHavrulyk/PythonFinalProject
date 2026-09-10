@@ -19,3 +19,8 @@ class Alert:
                 )
         self.__tk_element.grid(row=self.row, column=self.column, padx=(8, 15), pady=5, sticky="ew")
         return self
+
+    def update(self, text, style):
+        self.text = text
+        self.style = style
+        self.__tk_element.configure(text=text, bootstyle=style)

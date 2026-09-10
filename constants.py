@@ -13,9 +13,12 @@ RED_ALERT_STYLE = "danger-inverse"
 GREEN_ALERT_STYLE = "success-inverse"
 ORANGE_ALERT_STYLE = "warning-inverse"
 
-SPEND_INCOME_DIFF_TEXT_TEMPLATE = "Ваші витрати {diff} {percentage}% вашого доходу!"
-SPEND_DIFF_TEXT_TEMPLATE = "Ви витратили на {category} на {number}грн {diff} цього місяця!!"
-BALANCE_GROWTH_TEXT_TEMPLATE = "Ріст балансу {diff} на {percentage}% за 3 міс!"
+SPEND_INCOME_DIFF_TEXT_TEMPLATE = "Витрати становлять {percentage}% доходу цього місяця."
+SPEND_DIFF_TEXT_TEMPLATE = "Найбільше витрат на «{category}»: {number} грн цього місяця."
+BALANCE_GROWTH_TEXT_TEMPLATE = "Баланс {diff} на {percentage}% за останні 3 місяці."
+FORECAST_TEXT_TEMPLATE = "Очікуваний баланс через 6 місяців: {balance} грн."
+NO_ACTIVITY_TEXT = "Додайте дохід або витрату, щоб побачити аналітику."
+NO_INCOME_TEXT_TEMPLATE = "Витрати цього місяця: {amount} грн. Доходів ще немає."
 
 PIE_RED = "#cb4b16"
 PIE_BLUE = "#2aa198"
@@ -32,3 +35,33 @@ EXPENSE_COLORS = {
     "Розваги": PIE_PURPLE,
     "Квартира": PIE_PINK
 }
+
+MONTHS_TRANSLATION = {
+    "Jan": "Січ",
+    "Feb": "Лют",
+    "Mar": "Бер",
+    "Apr": "Кві",
+    "May": "Тра",
+    "Jun": "Чер",
+    "Jul": "Лип",
+    "Aug": "Сер",
+    "Sep": "Вер",
+    "Oct": "Жов",
+    "Nov": "Лис",
+    "Dec": "Гру"
+}
+
+MONTS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+]

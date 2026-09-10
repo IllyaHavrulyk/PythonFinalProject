@@ -53,7 +53,7 @@ class DateRangeSelector:
                 text="Застосувати",
                 bootstyle="info-outline",
                 command=self.__notify_change
-            ).pack(side=LEFT, padx=(5,0))
+            ).pack(side=LEFT, padx=(5, 0))
 
         for date_entry in (self.from_date_entry, self.to_date_entry):
             date_entry.bind("<<DateEntrySelected>>", self.__notify_change)

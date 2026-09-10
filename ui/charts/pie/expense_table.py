@@ -34,7 +34,6 @@ class ExpenseTable:
         self.__init_columns()
         self.update(self.initial_balance.get_expenses(), self.initial_expense_start_date, self.initial_expense_end_date)
 
-
     def __init_headings(self):
         self.expense_view.heading("date", text="Дата")
         self.expense_view.heading("category", text="Категорія")
