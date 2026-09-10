@@ -10,12 +10,8 @@ from domain.category import Category
 from domain.expense import Expense
 from domain.income import Income
 
-
-DEFAULT_DATABASE_PATH = Path(__file__).resolve().parents[1] / "expense_manager.db"
-
-
 class SQLiteBalanceRepository:
-    def __init__(self, database_path=DEFAULT_DATABASE_PATH):
+    def __init__(self, database_path):
         self.database_path = Path(database_path)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize_database()
@@ -72,8 +68,8 @@ class SQLiteBalanceRepository:
                 [(category,) for category in EXPENSE_CATEGORIES],
             )
 
-    def create_balance(self, value):
-        created_at = datetime.now()
+    def create_balance(self, value, created_at=None):
+        created_at = created_at or datetime.now()
         snapshot = BalanceSnapshot(created_at, value)
         with self._connection() as connection:
             connection.execute(
@@ -88,6 +84,13 @@ class SQLiteBalanceRepository:
                 (created_at.isoformat(), value),
             )
         return Balance(value, repository=self, value_snapshots=[snapshot])
+
+    def clear_financial_data(self):
+        with self._connection() as connection:
+            connection.execute("DELETE FROM balance_snapshots")
+            connection.execute("DELETE FROM expenses")
+            connection.execute("DELETE FROM incomes")
+            connection.execute("DELETE FROM app_state")
 
     def load_balance(self):
         with self._connection() as connection:

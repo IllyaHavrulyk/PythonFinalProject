@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from dateutil.relativedelta import relativedelta
 
-from constants import MONTHS_TRANSLATION
+from constants import BALANCE_HISTORY_MONTHS, MONTHS_TRANSLATION
 
 
 def get_expenses_by_date_range(expenses, start_date=None, end_date=None):
@@ -23,7 +23,7 @@ def filter_balance_snapshots(balance_snapshots):
     current_month = date.today().replace(day=1)
     months = [
         current_month - relativedelta(months=offset)
-        for offset in range(5, -1, -1)
+        for offset in range(BALANCE_HISTORY_MONTHS - 1, -1, -1)
     ]
     values_by_month = {month: 0 for month in months}
 

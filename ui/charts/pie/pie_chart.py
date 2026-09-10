@@ -3,7 +3,18 @@ import matplotlib.pyplot as plt
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 
-from constants import *
+from constants import (
+    CHART_DPI,
+    CHART_VERTICAL_PADDING,
+    NO_EXPENSES_TEXT,
+    PANEL_PADDING,
+    PIE_CHART_FIGURE_SIZE,
+    PIE_PERCENT_FORMAT,
+    PIE_START_ANGLE,
+    RIGHT_PANEL_PADDING,
+    SOLAR_PANEL,
+    SOLAR_TEXT,
+)
 
 
 class PieChart:
@@ -24,12 +35,25 @@ class PieChart:
         # Matplotlib pie chart figure and axis
 
     def __prepare_plot(self):
-        self.figure, self.axis = plt.subplots(figsize=(3, 2), dpi=100)
+        self.figure, self.axis = plt.subplots(
+            figsize=PIE_CHART_FIGURE_SIZE,
+            dpi=CHART_DPI,
+        )
         self.__plot_data()
 
     def draw(self):
-        self.tk_frame = tb.LabelFrame(self.master, text=self.title, padding=5)
-        self.tk_frame.grid(row=self.row, column=self.column, padx=(8, 15), pady=10, sticky="nsew")
+        self.tk_frame = tb.LabelFrame(
+            self.master,
+            text=self.title,
+            padding=PANEL_PADDING,
+        )
+        self.tk_frame.grid(
+            row=self.row,
+            column=self.column,
+            padx=RIGHT_PANEL_PADDING,
+            pady=CHART_VERTICAL_PADDING,
+            sticky="nsew",
+        )
 
         self.__prepare_plot()
         self.tk_canvas = tkAgg.FigureCanvasTkAgg(self.figure, master=self.tk_frame)
@@ -45,7 +69,7 @@ class PieChart:
             self.axis.text(
                 0.5,
                 0.5,
-                "Немає витрат",
+                NO_EXPENSES_TEXT,
                 color=SOLAR_TEXT,
                 ha="center",
                 va="center",
@@ -61,8 +85,8 @@ class PieChart:
             self.sizes,
             labels=self.categories,
             colors=self.colors,
-            autopct="%1.0f%%",
-            startangle=90,
+            autopct=PIE_PERCENT_FORMAT,
+            startangle=PIE_START_ANGLE,
             wedgeprops={"edgecolor": SOLAR_PANEL},
         )
         for pie_text in category_labels + percentage_labels:

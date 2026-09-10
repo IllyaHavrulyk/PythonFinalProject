@@ -2,8 +2,30 @@ import ttkbootstrap as tb
 
 from calculations.dashboard_utils import calculate_balance_forecast, get_future_month_labels
 from calculations.expense_utils import get_expense_totals_by_category, filter_balance_snapshots
-from constants import EXPENSE_CATEGORIES, EXPENSE_COLORS
-from persistence.sqlite_repository import DEFAULT_DATABASE_PATH, SQLiteBalanceRepository
+from config import APP_MODE, DATABASE_PATH, RESET_DATA_ON_START
+from constants import (
+    APP_MIN_HEIGHT,
+    APP_MIN_WIDTH,
+    APP_THEME,
+    BALANCE_AXIS_LABEL,
+    DATE_CONTROLS_MIN_HEIGHT,
+    EXPENSE_CHART_TITLE,
+    EXPENSE_CATEGORIES,
+    EXPENSE_COLORS,
+    FORECAST_CHART_FIGURE_SIZE,
+    FORECAST_CHART_MIN_HEIGHT,
+    FORECAST_CHART_PADDING,
+    FORECAST_CHART_TITLE,
+    FORECAST_LINE_WIDTH,
+    LEFT_CHART_PADDING,
+    RIGHT_PANEL_PADDING,
+    SIDEBAR_MIN_WIDTH,
+    TOP_CHART_FIGURE_SIZE,
+    TOP_CHART_TITLE,
+    CURRENCY_AXIS_LABEL,
+)
+from persistence.mock_data import load_mock_data
+from persistence.sqlite_repository import SQLiteBalanceRepository
 from ui.charts.graph_chart import GraphChart
 from ui.charts.pie.expense_table import ExpenseTable
 from ui.charts.pie.pie_chart import PieChart
@@ -14,7 +36,13 @@ from ui.sidebar import Sidebar
 
 
 class MainWindow:
-    def __init__(self, app_name, geometry, database_path=DEFAULT_DATABASE_PATH):
+    def __init__(
+            self,
+            app_name,
+            geometry,
+            database_path=DATABASE_PATH,
+            app_mode=APP_MODE,
+            reset_data_on_start=RESET_DATA_ON_START):
         self.expense_end_date = None
         self.expense_start_date = None
         self.app_name = app_name
@@ -26,19 +54,24 @@ class MainWindow:
         self.expense_table = None
         self.future_chart = None
         self.dashboard_alerts = None
+        self.app_mode = app_mode
+        self.reset_data_on_start = reset_data_on_start
         self.repository = SQLiteBalanceRepository(database_path)
 
     def init_window(self):
-        self.window = tb.Window(themename="solar")
+        self.window = tb.Window(themename=APP_THEME)
         self.window.title(self.app_name)
         self.window.geometry(self.geometry)
-        self.window.minsize(1050, 700)
+        self.window.minsize(APP_MIN_WIDTH, APP_MIN_HEIGHT)
         self.window.withdraw()
 
     def setup(self):
         self.init_window()
         self.initial_balance = self.repository.load_balance()
-        if self.initial_balance is None:
+        if self.app_mode == "test" and (
+                self.reset_data_on_start or self.initial_balance is None):
+            self.initial_balance = load_mock_data(self.repository)
+        elif self.initial_balance is None:
             self.initial_balance = self.repository.create_balance(self.__ask_initial_balance())
         self.__configure_grid()
         self.__draw_sidebar()
@@ -58,11 +91,11 @@ class MainWindow:
     def __configure_grid(self):
         # Keep navigation in its own column. The chart columns are the only columns
         # that grow when the window is maximized.
-        self.window.columnconfigure(0, weight=0, minsize=220)
+        self.window.columnconfigure(0, weight=0, minsize=SIDEBAR_MIN_WIDTH)
         self.window.columnconfigure((1, 2), weight=1, uniform="charts")
         self.window.rowconfigure(0, weight=4)
-        self.window.rowconfigure(1, weight=0, minsize=150)
-        self.window.rowconfigure(2, weight=0, minsize=180)
+        self.window.rowconfigure(1, weight=0, minsize=DATE_CONTROLS_MIN_HEIGHT)
+        self.window.rowconfigure(2, weight=0, minsize=FORECAST_CHART_MIN_HEIGHT)
         self.window.rowconfigure((3, 4), weight=0)
 
     def __draw_sidebar(self):
@@ -110,11 +143,11 @@ class MainWindow:
             x_data=filtered_snapshots.keys(),
             y_data=filtered_snapshots.values(),
             master=self.window,
-            title="Динаміка балансу",
-            y_label="Баланс, грн",
-            figsize=(4, 2),
-            padx=(0, 8),
-            chart_title="Динаміка балансу"
+            title=TOP_CHART_TITLE,
+            y_label=BALANCE_AXIS_LABEL,
+            figsize=TOP_CHART_FIGURE_SIZE,
+            padx=LEFT_CHART_PADDING,
+            chart_title=TOP_CHART_TITLE,
         )
         self.top_chart.draw()
 
@@ -127,7 +160,7 @@ class MainWindow:
             master=self.window,
             categories=expense_categories,
             colors=expense_colors,
-            title="Розподіл витрат"
+            title=EXPENSE_CHART_TITLE,
         ).draw()
 
     def __draw_date_selectors(self):
@@ -136,7 +169,7 @@ class MainWindow:
             self.window,
             row=1,
             column=2,
-            padx=(8, 15),
+            padx=RIGHT_PANEL_PADDING,
             on_change=self.__set_expense_filter,
             show_apply=True
         ).draw()
@@ -165,14 +198,14 @@ class MainWindow:
             x_data=month_numbers,
             y_data=future_balance,
             master=self.window,
-            title="Майбутній баланс",
-            y_label="грн",
-            figsize=(8, 1.5),
-            padx=(0, 15),
+            title=FORECAST_CHART_TITLE,
+            y_label=CURRENCY_AXIS_LABEL,
+            figsize=FORECAST_CHART_FIGURE_SIZE,
+            padx=FORECAST_CHART_PADDING,
             constrained_layout=True,
             fill_area=True,
             x_tick_labels=future_months,
-            line_width=2,
+            line_width=FORECAST_LINE_WIDTH,
         ).draw()
 
     def __draw_dashboard_alerts(self):

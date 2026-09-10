@@ -1,4 +1,4 @@
-from constants import *
+from constants import CHART_GRID_ALPHA, SOLAR_GRID, SOLAR_PANEL, SOLAR_TEXT
 
 
 def style_chart(figure, axis):
@@ -8,6 +8,6 @@ def style_chart(figure, axis):
     axis.xaxis.label.set_color(SOLAR_TEXT)
     axis.yaxis.label.set_color(SOLAR_TEXT)
     axis.title.set_color(SOLAR_TEXT)
-    axis.grid(color=SOLAR_GRID, alpha=0.25)
+    axis.grid(color=SOLAR_GRID, alpha=CHART_GRID_ALPHA)
     for spine in axis.spines.values():
         spine.set_color(SOLAR_GRID)

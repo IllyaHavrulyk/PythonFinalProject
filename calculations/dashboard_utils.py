@@ -3,16 +3,28 @@ from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
 from constants import (
+    AMOUNT_FORMAT_SPEC,
+    BALANCE_DECREASED_TEXT,
     BALANCE_GROWTH_TEXT_TEMPLATE,
+    BALANCE_INCREASED_TEXT,
+    BALANCE_TREND_MONTHS,
+    BALANCE_UNCHANGED_TEXT,
+    FORECAST_MONTHS,
     FORECAST_TEXT_TEMPLATE,
     GREEN_ALERT_STYLE,
     MONTHS_TRANSLATION,
     NO_ACTIVITY_TEXT,
     NO_INCOME_TEXT_TEMPLATE,
+    NO_MONTHLY_EXPENSES_TEXT,
     ORANGE_ALERT_STYLE,
+    PERCENT_FORMAT_SPEC,
     RED_ALERT_STYLE,
     SPEND_DIFF_TEXT_TEMPLATE,
+    SPEND_DANGER_PERCENTAGE,
     SPEND_INCOME_DIFF_TEXT_TEMPLATE,
+    SPEND_WARNING_PERCENTAGE,
+    THOUSANDS_SEPARATOR,
+    ZERO_BALANCE_CHANGE_TEXT_TEMPLATE,
 )
 
 
@@ -26,10 +38,10 @@ def _month_start(value):
 
 
 def _format_amount(value):
-    return f"{value:,.2f}".replace(",", " ")
+    return format(value, AMOUNT_FORMAT_SPEC).replace(",", THOUSANDS_SEPARATOR)
 
 
-def calculate_average_monthly_change(balance, months=6):
+def calculate_average_monthly_change(balance, months=FORECAST_MONTHS):
     """Return the average net change across the available recent month span."""
     current_month = date.today().replace(day=1)
     cutoff = current_month - relativedelta(months=months - 1)
@@ -57,13 +69,13 @@ def calculate_average_monthly_change(balance, months=6):
     return round(average, 2)
 
 
-def calculate_balance_forecast(balance, months=6):
+def calculate_balance_forecast(balance, months=FORECAST_MONTHS):
     monthly_change = calculate_average_monthly_change(balance, months)
     current_balance = balance.get_value()
     return [round(current_balance + monthly_change * offset, 2) for offset in range(1, months + 1)]
 
 
-def get_future_month_labels(months=6):
+def get_future_month_labels(months=FORECAST_MONTHS):
     current_month = date.today().replace(day=1)
     labels = []
     for offset in range(1, months + 1):
@@ -97,14 +109,16 @@ def build_dashboard_alerts(balance):
         )
     else:
         spend_percentage = total_expenses / total_income * 100
-        if spend_percentage > 100:
+        if spend_percentage > SPEND_DANGER_PERCENTAGE:
             comparison_style = RED_ALERT_STYLE
-        elif spend_percentage >= 80:
+        elif spend_percentage >= SPEND_WARNING_PERCENTAGE:
             comparison_style = ORANGE_ALERT_STYLE
         else:
             comparison_style = GREEN_ALERT_STYLE
         income_comparison = (
-            SPEND_INCOME_DIFF_TEXT_TEMPLATE.format(percentage=f"{spend_percentage:.1f}"),
+            SPEND_INCOME_DIFF_TEXT_TEMPLATE.format(
+                percentage=format(spend_percentage, PERCENT_FORMAT_SPEC),
+            ),
             comparison_style,
         )
 
@@ -120,9 +134,11 @@ def build_dashboard_alerts(balance):
             ORANGE_ALERT_STYLE,
         )
     else:
-        category_alert = ("Цього місяця витрат ще немає.", GREEN_ALERT_STYLE)
+        category_alert = (NO_MONTHLY_EXPENSES_TEXT, GREEN_ALERT_STYLE)
 
-    three_month_cutoff = today.replace(day=1) - relativedelta(months=2)
+    three_month_cutoff = today.replace(day=1) - relativedelta(
+        months=BALANCE_TREND_MONTHS - 1,
+    )
     recent_snapshots = sorted(
         [
             snapshot
@@ -136,13 +152,23 @@ def build_dashboard_alerts(balance):
     balance_change = current_balance - starting_balance
     if starting_balance:
         balance_percentage = abs(balance_change / starting_balance * 100)
-        direction = "зріс" if balance_change > 0 else "зменшився" if balance_change < 0 else "не змінився"
+        direction = (
+            BALANCE_INCREASED_TEXT
+            if balance_change > 0
+            else BALANCE_DECREASED_TEXT
+            if balance_change < 0
+            else BALANCE_UNCHANGED_TEXT
+        )
         balance_text = BALANCE_GROWTH_TEXT_TEMPLATE.format(
             diff=direction,
-            percentage=f"{balance_percentage:.1f}",
+            percentage=format(balance_percentage, PERCENT_FORMAT_SPEC),
+            months=BALANCE_TREND_MONTHS,
         )
     else:
-        balance_text = f"Зміна балансу за останні 3 місяці: {_format_amount(balance_change)} грн."
+        balance_text = ZERO_BALANCE_CHANGE_TEXT_TEMPLATE.format(
+            amount=_format_amount(balance_change),
+            months=BALANCE_TREND_MONTHS,
+        )
     balance_alert = (
         balance_text,
         GREEN_ALERT_STYLE if balance_change >= 0 else RED_ALERT_STYLE,
@@ -150,7 +176,10 @@ def build_dashboard_alerts(balance):
 
     forecast_balance = calculate_balance_forecast(balance)[-1]
     forecast_alert = (
-        FORECAST_TEXT_TEMPLATE.format(balance=_format_amount(forecast_balance)),
+        FORECAST_TEXT_TEMPLATE.format(
+            balance=_format_amount(forecast_balance),
+            months=FORECAST_MONTHS,
+        ),
         GREEN_ALERT_STYLE if forecast_balance >= current_balance else RED_ALERT_STYLE,
     )
 

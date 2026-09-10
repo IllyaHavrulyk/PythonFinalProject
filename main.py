@@ -1,4 +1,7 @@
+from constants import APP_GEOMETRY, APP_TITLE
 from ui.main_window import MainWindow
 
-main_window = MainWindow("Менеджер витрат", "1920x1080")
-main_window.start()
+
+if __name__ == "__main__":
+    main_window = MainWindow(APP_TITLE, APP_GEOMETRY)
+    main_window.start()

@@ -1,5 +1,7 @@
 import ttkbootstrap as tb
 
+from constants import ALERT_PADDING, CONTROL_GAP, RIGHT_PANEL_PADDING
+
 class Alert:
     def __init__(self, master, text, style, row, column):
         self.master = master
@@ -14,10 +16,16 @@ class Alert:
                     self.master,
                     text=self.text,
                     bootstyle=self.style,
-                    padding=10,
+                    padding=ALERT_PADDING,
                     anchor="center",
                 )
-        self.__tk_element.grid(row=self.row, column=self.column, padx=(8, 15), pady=5, sticky="ew")
+        self.__tk_element.grid(
+            row=self.row,
+            column=self.column,
+            padx=RIGHT_PANEL_PADDING,
+            pady=CONTROL_GAP,
+            sticky="ew",
+        )
         return self
 
     def update(self, text, style):

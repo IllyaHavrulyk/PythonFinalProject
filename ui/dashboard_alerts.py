@@ -1,4 +1,5 @@
 from calculations.dashboard_utils import build_dashboard_alerts
+from constants import ALERT_POSITIONS
 from ui.alert import Alert
 
 
@@ -9,12 +10,11 @@ class DashboardAlerts:
         self.alerts = []
 
     def draw(self):
-        positions = [(3, 1), (3, 2), (4, 1), (4, 2)]
         alert_data = build_dashboard_alerts(self.balance)
 
         self.alerts = [
             Alert(self.master, text, style, row, column).draw()
-            for (text, style), (row, column) in zip(alert_data, positions)
+            for (text, style), (row, column) in zip(alert_data, ALERT_POSITIONS)
         ]
 
         return self
