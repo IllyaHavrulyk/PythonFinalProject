@@ -13,7 +13,11 @@ def to_money(value) -> Decimal:
 
     if not amount.is_finite():
         raise ValueError("Amount must be finite.")
-    return amount.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+
+    try:
+        return amount.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    except InvalidOperation as exc:
+        raise ValueError("Amount is too large.") from exc
 
 
 def positive_money(value) -> Decimal:

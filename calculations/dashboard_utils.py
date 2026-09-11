@@ -9,7 +9,6 @@ from constants import (
     BALANCE_GROWTH_TEXT_TEMPLATE,
     BALANCE_INCREASED_TEXT,
     BALANCE_TREND_MONTHS,
-    BALANCE_UNCHANGED_TEXT,
     FORECAST_MONTHS,
     FORECAST_TEXT_TEMPLATE,
     GREEN_ALERT_STYLE,
@@ -84,7 +83,7 @@ def get_future_month_labels(months=FORECAST_MONTHS):
     labels = []
     for offset in range(1, months + 1):
         future_month = current_month + relativedelta(months=offset)
-        labels.append(MONTHS_TRANSLATION[future_month.strftime("%b")])
+        labels.append(MONTHS_TRANSLATION[future_month.month])
     return labels
 
 
@@ -143,25 +142,29 @@ def build_dashboard_alerts(balance):
     three_month_cutoff = today.replace(day=1) - relativedelta(
         months=BALANCE_TREND_MONTHS - 1,
     )
-    recent_snapshots = sorted(
-        [
-            snapshot
-            for snapshot in balance.get_value_snapshots()
-            if _as_date(snapshot.date) >= three_month_cutoff
-        ],
+    sorted_snapshots = sorted(
+        balance.get_value_snapshots(),
         key=lambda snapshot: _as_date(snapshot.date),
     )
-    starting_balance = recent_snapshots[0].value
+    earlier_snapshots = [
+        snapshot
+        for snapshot in sorted_snapshots
+        if _as_date(snapshot.date) < three_month_cutoff
+    ]
+    if earlier_snapshots:
+        # The balance carried into the window, not the balance left after its
+        # first transaction, is what the change is measured against.
+        starting_balance = earlier_snapshots[-1].value
+    elif sorted_snapshots:
+        starting_balance = sorted_snapshots[0].value
+    else:
+        starting_balance = balance.get_value()
     current_balance = balance.get_value()
     balance_change = current_balance - starting_balance
-    if starting_balance:
+    if balance_change and starting_balance:
         balance_percentage = abs(balance_change / starting_balance * 100)
         direction = (
-            BALANCE_INCREASED_TEXT
-            if balance_change > 0
-            else BALANCE_DECREASED_TEXT
-            if balance_change < 0
-            else BALANCE_UNCHANGED_TEXT
+            BALANCE_INCREASED_TEXT if balance_change > 0 else BALANCE_DECREASED_TEXT
         )
         balance_text = BALANCE_GROWTH_TEXT_TEMPLATE.format(
             diff=direction,

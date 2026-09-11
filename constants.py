@@ -33,6 +33,10 @@ FONT_WEIGHT_BOLD = "bold"
 BODY_FONT_SIZE = 12
 DIALOG_TITLE_FONT_SIZE = 13
 CHART_TITLE_FONT_SIZE = 10
+CHART_TICK_FONT_SIZE = 7
+CHART_AXIS_LABEL_FONT_SIZE = 8
+PIE_LABEL_FONT_SIZE = 7
+MAX_Y_AXIS_TICKS = 5
 PANEL_PADDING = 5
 DIALOG_PADDING = 24
 SIDEBAR_PADDING = (15, 18)
@@ -104,6 +108,26 @@ NO_EXPENSES_TEXT = "Немає витрат"
 EXPENSE_BUTTON_TEXT = "Витрата"
 INCOME_BUTTON_TEXT = "Дохід"
 EXPORT_BUTTON_TEXT = "Експорт (CSV)"
+EXPORT_DIALOG_TITLE = "Зберегти експорт"
+EXPORT_DEFAULT_FILENAME = "transactions.csv"
+EXPORT_FILE_EXTENSION = ".csv"
+EXPORT_FILE_TYPES = [("CSV", "*.csv"), ("Усі файли", "*.*")]
+EXPORT_SUCCESS_TITLE = "Експорт завершено"
+EXPORT_SUCCESS_TEXT_TEMPLATE = "Збережено записів: {count}\n{path}"
+EXPORT_EMPTY_TITLE = "Немає даних"
+EXPORT_EMPTY_TEXT = "Ще немає доходів або витрат для експорту."
+EXPORT_ERROR_TITLE = "Помилка експорту"
+EXPORT_ERROR_TEXT_TEMPLATE = "Не вдалося зберегти файл:\n{error}"
+CSV_ENCODING = "utf-8-sig"
+# Excel opened by double-click splits on the system list separator, which is ";"
+# in a Ukrainian locale. RFC 4180 readers (pandas, Sheets) accept it when told.
+CSV_DELIMITER = ";"
+# Ukrainian Excel reads "5500.00" as text; with a comma it is a number.
+CSV_DECIMAL_SEPARATOR = ","
+CSV_HEADERS = ("Дата", "Тип", "Категорія", "Сума")
+CSV_INCOME_LABEL = "Дохід"
+CSV_EXPENSE_LABEL = "Витрата"
+CSV_NO_CATEGORY = ""
 ADD_BUTTON_TEXT = "Додати"
 INCOME_DIALOG_TITLE = "Додати дохід"
 EXPENSE_DIALOG_TITLE = "Додати витрату"
@@ -147,7 +171,6 @@ NO_INCOME_TEXT_TEMPLATE = "Витрати цього місяця: {amount} гр
 NO_MONTHLY_EXPENSES_TEXT = "Цього місяця витрат ще немає."
 BALANCE_INCREASED_TEXT = "зріс"
 BALANCE_DECREASED_TEXT = "зменшився"
-BALANCE_UNCHANGED_TEXT = "не змінився"
 ALERT_POSITIONS = [(3, 1), (3, 2), (4, 1), (4, 2)]
 
 # Categories and month labels
@@ -161,20 +184,82 @@ EXPENSE_COLORS = {
     "Квартира": PIE_PINK,
 }
 MONTHS_TRANSLATION = {
-    "Jan": "Січ", "Feb": "Лют", "Mar": "Бер", "Apr": "Кві",
-    "May": "Тра", "Jun": "Чер", "Jul": "Лип", "Aug": "Сер",
-    "Sep": "Вер", "Oct": "Жов", "Nov": "Лис", "Dec": "Гру",
+    1: "Січ", 2: "Лют", 3: "Бер", 4: "Кві",
+    5: "Тра", 6: "Чер", 7: "Лип", 8: "Сер",
+    9: "Вер", 10: "Жов", 11: "Лис", 12: "Гру",
 }
 
-# Mock data used only in APP_MODE=test
+# Mock data used only in APP_MODE=test.
+# Incomes are (day, amount); expenses are (day, category, amount). Days beyond the
+# length of a real month, or in the future for the current month, are clamped.
 MOCK_INITIAL_BALANCE = 42_000
-MOCK_TRANSACTION_DAY = 15
-MOCK_MONTHLY_INCOMES = [12_500, 13_200, 12_800, 14_000, 13_800, 15_000]
+MOCK_MONTHLY_INCOMES = [
+    [(5, 12_500)],
+    [(5, 13_200), (22, 2_400)],
+    [(5, 12_800)],
+    [(5, 14_000)],
+    [(5, 13_800), (19, 1_900)],
+    [(5, 15_000)],
+]
 MOCK_MONTHLY_EXPENSES = [
-    [("Їжа", 3_200), ("Квартира", 5_500)],
-    [("Їжа", 3_450), ("Бенз", 1_600)],
-    [("Квартира", 5_500), ("Розваги", 1_300)],
-    [("Їжа", 3_100), ("Утиль", 1_100)],
-    [("Бенз", 1_850), ("Розваги", 1_500)],
-    [("Їжа", 3_600), ("Квартира", 5_500), ("Розваги", 1_200)],
+    [
+        (3, "Квартира", 5_500),
+        (6, "Їжа", 1_150),
+        (9, "Утиль", 1_080),
+        (11, "Бенз", 820),
+        (13, "Їжа", 890),
+        (16, "Розваги", 540),
+        (19, "Їжа", 1_240),
+        (24, "Бенз", 760),
+    ],
+    [
+        (3, "Квартира", 5_500),
+        (7, "Їжа", 1_320),
+        (10, "Утиль", 1_240),
+        (12, "Бенз", 910),
+        (15, "Їжа", 780),
+        (18, "Розваги", 1_150),
+        (21, "Їжа", 1_060),
+        (27, "Бенз", 840),
+    ],
+    [
+        (3, "Квартира", 5_500),
+        (6, "Їжа", 1_080),
+        (9, "Утиль", 2_180),
+        (12, "Бенз", 880),
+        (14, "Їжа", 1_390),
+        (17, "Розваги", 920),
+        (20, "Їжа", 950),
+        (23, "Бенз", 790),
+        (28, "Їжа", 1_120),
+    ],
+    [
+        (3, "Квартира", 5_500),
+        (8, "Їжа", 1_210),
+        (10, "Утиль", 1_460),
+        (13, "Бенз", 850),
+        (16, "Їжа", 830),
+        (21, "Їжа", 1_170),
+        (25, "Розваги", 610),
+    ],
+    [
+        (3, "Квартира", 5_500),
+        (6, "Їжа", 940),
+        (9, "Утиль", 1_120),
+        (11, "Бенз", 930),
+        (14, "Їжа", 1_280),
+        (17, "Розваги", 1_480),
+        (20, "Їжа", 870),
+        (26, "Бенз", 800),
+        (28, "Їжа", 1_030),
+    ],
+    [
+        (3, "Квартира", 5_500),
+        (7, "Їжа", 1_190),
+        (9, "Утиль", 1_060),
+        (11, "Бенз", 870),
+        (13, "Їжа", 1_240),
+        (16, "Розваги", 900),
+        (20, "Їжа", 880),
+    ],
 ]

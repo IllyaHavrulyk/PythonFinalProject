@@ -155,7 +155,6 @@ class MainWindow:
             y_label=BALANCE_AXIS_LABEL,
             figsize=TOP_CHART_FIGURE_SIZE,
             padx=LEFT_CHART_PADDING,
-            chart_title=TOP_CHART_TITLE,
         )
         self.top_chart.draw()
 

@@ -32,6 +32,12 @@ class DomainTests(unittest.TestCase):
             incomes.append(Income(date.today(), "1.00"))
         self.assertEqual(balance.get_value(), Decimal("125.00"))
 
+    def test_oversized_amounts_raise_value_error(self):
+        for value in ("1e100", "99999999999999999999999999999999"):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    Income(date.today(), value)
+
     def test_snapshot_always_uses_date(self):
         snapshot = BalanceSnapshot(datetime(2026, 9, 11, 12), "5")
         self.assertEqual(snapshot.date, date(2026, 9, 11))

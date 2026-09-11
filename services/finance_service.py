@@ -7,6 +7,7 @@ from domain.balance_snapshot import BalanceSnapshot
 from domain.expense import Expense
 from domain.income import Income
 from domain.money import to_money
+from persistence.csv_exporter import export_transactions
 from persistence.mock_data import load_mock_data
 from persistence.repository import BalanceRepository
 
@@ -65,3 +66,10 @@ class FinanceService:
 
     def get_categories(self) -> list[str]:
         return [category.name for category in self._repository.load_categories()]
+
+    def count_transactions(self) -> int:
+        return len(self.balance.get_incomes()) + len(self.balance.get_expenses())
+
+    def export_transactions(self, path) -> int:
+        """Write every transaction to `path` as CSV and return the row count."""
+        return export_transactions(self.balance, path)

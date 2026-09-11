@@ -9,6 +9,7 @@ from constants import (
     NO_EXPENSES_TEXT,
     PANEL_PADDING,
     PIE_CHART_FIGURE_SIZE,
+    PIE_LABEL_FONT_SIZE,
     PIE_PERCENT_FORMAT,
     PIE_START_ANGLE,
     RIGHT_PANEL_PADDING,
@@ -38,6 +39,7 @@ class PieChart:
         self.figure, self.axis = plt.subplots(
             figsize=PIE_CHART_FIGURE_SIZE,
             dpi=CHART_DPI,
+            constrained_layout=True,
         )
         self._plot_data()
 
@@ -88,6 +90,7 @@ class PieChart:
             autopct=PIE_PERCENT_FORMAT,
             startangle=PIE_START_ANGLE,
             wedgeprops={"edgecolor": SOLAR_PANEL},
+            textprops={"fontsize": PIE_LABEL_FONT_SIZE},
         )
         for pie_text in category_labels + percentage_labels:
             pie_text.set_color(SOLAR_TEXT)

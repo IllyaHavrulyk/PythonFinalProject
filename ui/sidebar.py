@@ -1,6 +1,8 @@
 import tkinter as tk
+from tkinter import filedialog
 
 import ttkbootstrap as tb
+from ttkbootstrap.dialogs import Messagebox
 
 from constants import (
     ADD_BUTTON_TEXT,
@@ -24,6 +26,16 @@ from constants import (
     EXPENSE_DIALOG_TITLE,
     EXPORT_BUTTON_STYLE,
     EXPORT_BUTTON_TEXT,
+    EXPORT_DEFAULT_FILENAME,
+    EXPORT_DIALOG_TITLE,
+    EXPORT_EMPTY_TEXT,
+    EXPORT_EMPTY_TITLE,
+    EXPORT_ERROR_TEXT_TEMPLATE,
+    EXPORT_ERROR_TITLE,
+    EXPORT_FILE_EXTENSION,
+    EXPORT_FILE_TYPES,
+    EXPORT_SUCCESS_TEXT_TEMPLATE,
+    EXPORT_SUCCESS_TITLE,
     FIELD_LABEL_PADDING,
     FONT_FAMILY,
     FONT_WEIGHT_BOLD,
@@ -222,6 +234,41 @@ class Sidebar:
         entry_amount.focus_set()
         self.master.wait_window(dialog)
 
+    def _export_to_csv(self):
+        if not self.finance_service.count_transactions():
+            Messagebox.show_info(
+                EXPORT_EMPTY_TEXT,
+                EXPORT_EMPTY_TITLE,
+                parent=self.master,
+            )
+            return
+
+        path = filedialog.asksaveasfilename(
+            parent=self.master,
+            title=EXPORT_DIALOG_TITLE,
+            initialfile=EXPORT_DEFAULT_FILENAME,
+            defaultextension=EXPORT_FILE_EXTENSION,
+            filetypes=EXPORT_FILE_TYPES,
+        )
+        if not path:
+            return
+
+        try:
+            exported = self.finance_service.export_transactions(path)
+        except OSError as error:
+            Messagebox.show_error(
+                EXPORT_ERROR_TEXT_TEMPLATE.format(error=error),
+                EXPORT_ERROR_TITLE,
+                parent=self.master,
+            )
+            return
+
+        Messagebox.show_info(
+            EXPORT_SUCCESS_TEXT_TEMPLATE.format(count=exported, path=path),
+            EXPORT_SUCCESS_TITLE,
+            parent=self.master,
+        )
+
     def draw(self):
         # Buttons and cushion text
         self.tk_frame = tb.Frame(self.master, padding=SIDEBAR_PADDING)
@@ -249,6 +296,7 @@ class Sidebar:
             self.tk_frame,
             text=EXPORT_BUTTON_TEXT,
             bootstyle=EXPORT_BUTTON_STYLE,
+            command=self._export_to_csv,
         )
         btn_export.grid(
             row=2, column=0, pady=SIDEBAR_BUTTON_PADDING,

@@ -6,6 +6,7 @@ from ttkbootstrap.constants import BOTH
 from constants import (
     CHART_DPI,
     CHART_FILL_ALPHA,
+    CHART_TICK_FONT_SIZE,
     CHART_TITLE_FONT_SIZE,
     CHART_VERTICAL_PADDING,
     DEFAULT_LINE_WIDTH,
@@ -22,7 +23,7 @@ class GraphChart:
                  y_data, master, title,
                  y_label, figsize, padx,
                  columnspan=1,
-                 constrained_layout=False,
+                 constrained_layout=True,
                  line_width=DEFAULT_LINE_WIDTH,
                  fill_area=False,
                  x_tick_labels=None,
@@ -123,7 +124,11 @@ class GraphChart:
             )
 
         if self.x_tick_labels is not None:
-            self.axis.set_xticks(x_data, self.x_tick_labels)
+            self.axis.set_xticks(
+                x_data,
+                self.x_tick_labels,
+                fontsize=CHART_TICK_FONT_SIZE,
+            )
 
         if self.chart_title:
             self.axis.set_title(self.chart_title, fontsize=CHART_TITLE_FONT_SIZE)
