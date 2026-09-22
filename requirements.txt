@@ -1,3 +1,6 @@
-matplotlib
-python-dateutil
-ttkbootstrap
+# Version caps, not just names. ttkbootstrap 3.0 removes the legacy theme names
+# and bootstyle modifiers this app used to rely on, so an uncapped install could
+# pull a release the code cannot start on. Verified against the versions below.
+matplotlib~=3.11
+python-dateutil~=2.9
+ttkbootstrap~=2.2

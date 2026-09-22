@@ -1,7 +1,7 @@
 # Application
 APP_TITLE = "Менеджер витрат"
 APP_GEOMETRY = "1920x1080"
-APP_THEME = "solar"
+APP_THEME = "solarized-dark"
 APP_MIN_WIDTH = 1050
 APP_MIN_HEIGHT = 700
 APP_MODE_DEV = "dev"
@@ -23,9 +23,9 @@ EXPENSE_BUTTON_STYLE = "danger-outline"
 INCOME_BUTTON_STYLE = "success-outline"
 EXPORT_BUTTON_STYLE = "warning-outline"
 APPLY_BUTTON_STYLE = "info-outline"
-RED_ALERT_STYLE = "danger-inverse"
-GREEN_ALERT_STYLE = "success-inverse"
-ORANGE_ALERT_STYLE = "warning-inverse"
+RED_ALERT_STYLE = "@danger"
+GREEN_ALERT_STYLE = "@success"
+ORANGE_ALERT_STYLE = "@warning"
 
 # Typography and spacing
 FONT_FAMILY = "Helvetica"
