@@ -5,7 +5,7 @@
 «Менеджер витрат» — це навчальний настільний застосунок для обліку особистих
 фінансів. Користувач може задати початковий баланс, додавати доходи та витрати,
 фільтрувати витрати за датою, переглядати графіки, прогноз балансу й автоматично
-сформовані повідомлення.
+сформовані повідомлення, а також експортувати всі операції у файл CSV.
 
 Проєкт має **шарову архітектуру**. Код поділено на кілька частин із різною
 відповідальністю:
@@ -55,11 +55,13 @@ flowchart TB
         DashboardUtils[dashboard_utils]
     end
 
-    subgraph Persistence[Шар збереження]
+    subgraph Persistence[Шар збереження та експорту]
         RepositoryContract[BalanceRepository Protocol]
         Repository[SQLiteBalanceRepository]
         MockData[mock_data]
+        CsvExporter[csv_exporter]
         Database[(SQLite)]
+        CsvFile[/CSV-файл/]
     end
 
     subgraph Configuration[Конфігурація]
@@ -92,8 +94,11 @@ flowchart TB
     Env --> Config
     Config --> MainWindow
     FinanceService --> MockData
+    FinanceService --> CsvExporter
+    CsvExporter --> CsvFile
     Constants --> Presentation
     Constants --> Calculations
+    Constants --> Persistence
 ```
 
 ### Як читати цю діаграму
@@ -180,6 +185,13 @@ classDiagram
         +add_expense(amount, category, date)
         +add_income(amount, date)
         +get_categories() list
+        +count_transactions() int
+        +export_transactions(path) int
+    }
+
+    class csv_exporter {
+        <<module>>
+        +export_transactions(balance, path) int
     }
 
     class Sidebar {
@@ -261,6 +273,8 @@ classDiagram
     FinanceService --> BalanceRepository
     SQLiteBalanceRepository ..|> BalanceRepository
     SQLiteBalanceRepository ..> Category : завантажує
+    FinanceService ..> csv_exporter : делегує експорт
+    csv_exporter ..> Balance : читає операції
 ```
 
 ### Головні відповідальності класів
@@ -358,6 +372,53 @@ sequenceDiagram
 Для доходу послідовність така сама, але створюється `Income`, а сума додається до
 балансу через `add_income()` і `save_income()`.
 
+### 4.3. Експорт у CSV
+
+```mermaid
+sequenceDiagram
+    actor User as Користувач
+    participant Sidebar
+    participant Dialog as Діалог збереження
+    participant Service as FinanceService
+    participant Exporter as csv_exporter
+    participant Balance
+    participant File as CSV-файл
+
+    User->>Sidebar: Натискає «Експорт (CSV)»
+    Sidebar->>Service: count_transactions()
+
+    alt Операцій ще немає
+        Service-->>Sidebar: 0
+        Sidebar-->>User: Повідомлення «Немає даних»
+    else Є що експортувати
+        Sidebar->>Dialog: Запитує шлях до файлу
+        Dialog-->>Sidebar: Шлях або скасування
+
+        alt Користувач скасував
+            Sidebar-->>User: Нічого не відбувається
+        else Шлях обрано
+            Sidebar->>Service: export_transactions(path)
+            Service->>Exporter: export_transactions(balance, path)
+            Exporter->>Balance: get_incomes() і get_expenses()
+            Balance-->>Exporter: Операції
+            Exporter->>Exporter: Об'єднує та сортує за датою
+            Exporter->>File: Записує UTF-8 з BOM, роздільник «крапка з комою»
+            Exporter-->>Service: Кількість рядків
+            Service-->>Sidebar: Кількість рядків
+
+            alt Файл не вдалося записати
+                Sidebar-->>User: Повідомлення про помилку
+            else Успіх
+                Sidebar-->>User: «Збережено записів: N»
+            end
+        end
+    end
+```
+
+Експорт не залежить від обраного діапазону дат: у файл потрапляють усі операції.
+Кодування UTF-8 з BOM і роздільник `;` підібрані так, щоб Excel з українською
+локаллю одразу розкладав дані по колонках, а суми читалися як числа.
+
 ## 5. Діаграма бази даних
 
 ```mermaid
@@ -431,8 +492,9 @@ flowchart LR
     Env[APP_MODE у .env] --> Choice{Який режим?}
     Choice -->|dev| DevDB[(expense_manager.db)]
     Choice -->|test| Reset[Скидання тестових даних]
-    Reset --> Seed[Генерація даних за 6 місяців]
-    Seed --> TestDB[(test_expense_manager.db)]
+    Reset --> Seed[Генерація 56 операцій за 6 місяців]
+    Seed --> Clamp[Обмеження дат: не пізніше сьогодні]
+    Clamp --> TestDB[(test_expense_manager.db)]
     DevDB --> Dashboard[Головне вікно]
     TestDB --> Dashboard
 ```
@@ -440,8 +502,61 @@ flowchart LR
 - `dev` — реальний сценарій використання. Дані не скидаються між запусками.
 - `test` — демонстраційний сценарій. Окрема база щоразу наповнюється передбачуваними
   тестовими даними, тому графіки та повідомлення можна перевірити одразу.
+  Операції розподілені за різними днями кожного місяця (оренда, комунальні послуги,
+  кілька закупівель продуктів, пальне та дозвілля), тому графіки мають реалістичну
+  форму. Дні, що виходять за межі місяця або припадають на майбутнє, обмежуються.
 
-## 8. Сильні сторони архітектури
+## 8. Автоматичні тести
+
+```mermaid
+flowchart LR
+    subgraph Unit[Модульні тести]
+        Money[test_money]
+        Domain[test_domain]
+        Calc[test_calculations]
+        Config[test_config]
+    end
+
+    subgraph Integration[Інтеграційні тести]
+        Persist[test_persistence]
+        Mock[test_mock_data]
+        Service[test_service]
+        Export[test_export]
+    end
+
+    subgraph Interface[Тести інтерфейсу]
+        Widgets[test_ui]
+        Dialogs[test_ui_dialogs]
+    end
+
+    Support[tests/support.py] --> Integration
+    Support --> Interface
+    Unit --> Report[214 тестів, 99% покриття]
+    Integration --> Report
+    Interface --> Report
+```
+
+Тести запускаються командою `python -m unittest discover`. Вони поділені за шарами:
+
+- **Модульні** перевіряють чисті функції та доменні правила без бази даних.
+- **Інтеграційні** використовують тимчасовий файл SQLite, тому перевіряють
+  збереження, міграцію та експорт на справжній базі.
+- **Тести інтерфейсу** створюють приховане вікно `ttkbootstrap`. Модальні діалоги
+  блокують виконання на `wait_window`, тому в тестах цей виклик підмінюється, а
+  віджети керуються програмно. Якщо дисплей недоступний, ці тести пропускаються,
+  а не падають.
+
+`tests/support.py` містить спільні заготовки: `TemporaryDatabaseTestCase` створює
+окрему базу для кожного тесту, а `TkTestCase` — одне приховане вікно на клас.
+
+Звіт про покриття (потрібен пакет із `requirements-dev.txt`):
+
+```bash
+python -m coverage run -m unittest discover
+python -m coverage report
+```
+
+## 9. Сильні сторони архітектури
 
 - Код поділено за відповідальністю, тому його простіше читати початківцю.
 - UI не містить SQL-запитів.
@@ -449,12 +564,13 @@ flowchart LR
 - Гроші обчислюються через `Decimal`, а в SQLite зберігаються як цілі копійки.
 - Доменні колекції захищені від зміни ззовні, а сутності є незмінними.
 - Залежність від сховища описана через `BalanceRepository Protocol`.
-- Автоматичні тести перевіряють домен, обчислення, SQLite та міграцію даних.
+- Автоматичні тести покривають 99% коду: домен, обчислення, конфігурацію, SQLite,
+  міграцію, експорт CSV та віджети інтерфейсу.
 - Обчислення прогнозу та статистики відокремлені від віджетів.
 - `test` режим дозволяє швидко продемонструвати всі частини інтерфейсу.
 - Текст, стилі та розміри зібрані у `constants.py`.
 
-## 9. Обмеження та можливі покращення
+## 10. Обмеження та можливі покращення
 
 Для навчального pet project поточна архітектура є достатньою, але її можна
 розвивати далі:
@@ -462,15 +578,22 @@ flowchart LR
 1. Додати ідентифікатор балансу до фінансових таблиць для підтримки кількох
    користувачів або рахунків.
 2. Додати редагування й видалення доходів та витрат.
-3. Розширити механізм міграцій для наступних версій схеми.
-4. Реалізувати експорт CSV, кнопка якого вже присутня в інтерфейсі.
+3. Розширити механізм міграцій: зараз стара база отримує нові значення, але
+   зберігає колонки типу `REAL` без обмежень `CHECK` і зовнішніх ключів.
+4. Відкривати таблицю витрат за поточний місяць, а не лише за сьогодні.
+5. Зафіксувати версії залежностей у `requirements.txt` і перейти з теми `solar`
+   та стилів `*-inverse`, які `ttkbootstrap` позначив застарілими.
+6. Обробляти помилки збереження у діалогах доходу та витрати так само, як це вже
+   зроблено для експорту.
 
-## 10. Коротке пояснення для захисту проєкту
+## 11. Коротке пояснення для захисту проєкту
 
 > Застосунок побудовано за шаровим принципом. Інтерфейс на ttkbootstrap приймає
 > дії користувача, FinanceService координує сценарії, а доменний клас Balance
 > керує фінансовим станом. Окремі функції виконують аналітичні обчислення, а
 > SQLiteBalanceRepository реалізує контракт BalanceRepository та зберігає сутності
 > в SQLite. MainWindow оновлює графіки, таблицю й
-> повідомлення після кожної операції. Dev-режим працює з реальними даними, а
-> test-режим автоматично завантажує демонстраційний набір за шість місяців.
+> повідомлення після кожної операції. Окремий модуль csv_exporter вивантажує всі
+> операції у файл CSV. Dev-режим працює з реальними даними, а test-режим
+> автоматично завантажує демонстраційний набір за шість місяців. Кодову базу
+> покрито автоматичними тестами на 99%.

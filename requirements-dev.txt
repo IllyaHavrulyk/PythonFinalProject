@@ -1,0 +1,4 @@
+# Tooling for running the automated tests with a coverage report.
+# The tests themselves need only the standard library plus requirements.txt.
+-r requirements.txt
+coverage
